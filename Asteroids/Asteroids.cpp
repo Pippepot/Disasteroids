@@ -23,8 +23,16 @@ private:
 
 	};
 
+	struct sLaser
+	{
+		olc::vf2d sPosition;
+		olc::vf2d ePosition;
+		float timeLeft;
+
+	};
+
 	vector<sSpaceObject> vecAsteroids;
-	vector<sSpaceObject> vecBullets;
+	vector<sLaser> vecLasers;
 	sSpaceObject player;
 	int nScore;
 	bool bDead = false;
@@ -89,7 +97,7 @@ public:
 	void ResetGame()
 	{
 		vecAsteroids.clear();
-		vecBullets.clear();
+		vecLasers.clear();
 
 		vecAsteroids.push_back({ {20.0, 20.0}, {8.0f, -6.0f}, (int)16, 0.0f });
 		vecAsteroids.push_back({ {100.0, 20.0}, {-5.0f, -5.0f}, (int)16, 0.0f });
@@ -120,9 +128,9 @@ public:
 		if (GetKey(olc::UP).bHeld || GetKey(olc::W).bHeld)
 			player.velocity += olc::vf2d(sin(player.angle), -cos(player.angle)) * 20.0 * fElapsedTime;
 
-		// Shoot bullets
+		// Shoot laser
 		if (GetKey(olc::SPACE).bPressed)
-			vecBullets.push_back({ player.position, {50.0f * sinf(player.angle), -50.0f * cosf(player.angle)}, 0, 0 });
+			vecLasers.push_back({ player.position, {50.0f * sinf(player.angle), -50.0f * cosf(player.angle)}, 2});
 
 		// Change position
 		player.position += player.velocity * fElapsedTime;
@@ -145,33 +153,32 @@ public:
 		vector<sSpaceObject> newAsteroids;
 
 		// Update bullet position and velocity
-		for (auto& b : vecBullets)
+		for (auto& l : vecLasers)
 		{
-			b.position += b.velocity * fElapsedTime;
-			WrapCoordinates(b.position, b.position);
+			l.timeLeft -= fElapsedTime;
 
-			for (auto& a : vecAsteroids)
-			{
-				if (IsPointInsideCircle(a.position, a.nSize, b.position))
-				{
-					// Asteroid hit
-					b.position.x = -100;
+			//for (auto& a : vecAsteroids)
+			//{
+			//	if (IsPointInsideCircle(a.position, a.nSize, l.position))
+			//	{
+			//		// Asteroid hit
+			//		l.position.x = -100;
 
-					if (a.nSize > 4)
-					{
-						// Create to children
-						float angle1 = ((float)rand() / (float)(RAND_MAX) * 6.283185f);
-						float angle2 = ((float)rand() / (float)(RAND_MAX) * 6.283185f);
+			//		if (a.nSize > 4)
+			//		{
+			//			// Create to children
+			//			float angle1 = ((float)rand() / (float)(RAND_MAX) * 6.283185f);
+			//			float angle2 = ((float)rand() / (float)(RAND_MAX) * 6.283185f);
 
-						newAsteroids.push_back({ a.position, {10.0f * sinf(angle1), 10.0f * cosf(angle1)}, (int)a.nSize >> 1 , 0.0f });
-						newAsteroids.push_back({ a.position, {10.0f * sinf(angle2), 10.0f * cosf(angle2)}, (int)a.nSize >> 1 , 0.0f });
-					}
+			//			newAsteroids.push_back({ a.position, {10.0f * sinf(angle1), 10.0f * cosf(angle1)}, (int)a.nSize >> 1 , 0.0f });
+			//			newAsteroids.push_back({ a.position, {10.0f * sinf(angle2), 10.0f * cosf(angle2)}, (int)a.nSize >> 1 , 0.0f });
+			//		}
 
-					// Remove asteroid - Same approach as bullets
-					a.position.x = -100;
-					nScore += 100;
-				}
-			}
+			//		// Remove asteroid - Same approach as bullets
+			//		a.position.x = -100;
+			//		nScore += 100;
+			//	}
+			//}
 
 
 		}
@@ -192,7 +199,7 @@ public:
 			// Level Clear
 			nScore += 1000; // Large score for level progression
 			vecAsteroids.clear();
-			vecBullets.clear();
+			vecLasers.clear();
 
 			// Add two new asteroids, but in a place where the player is not, we'll simply
 			// add them 90 degrees left and right to the player, their coordinates will
@@ -208,17 +215,9 @@ public:
 				{-10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, (int)16, 0.0f });
 		}
 
-		// Remove bullets that have gone off screen
-		if (vecBullets.size() > 0)
-		{
-			auto i = remove_if(vecBullets.begin(), vecBullets.end(), [&](sSpaceObject o) { return (o.position.x < 1 || o.position.y < 1 || o.position.x >= ScreenWidth() - 1 || o.position.y >= ScreenHeight() - 1); });
-			if (i != vecBullets.end())
-				vecBullets.erase(i);
-		}
-
 		// Draw bullets
-		for (auto& b : vecBullets)
-			Draw(b.position.x, b.position.y);
+		for (auto& l : vecLasers)
+			DrawLine(l.sPosition, l.ePosition, olc::BLUE);
 		
 		// Draw asteroids
 		for (auto& a : vecAsteroids)
