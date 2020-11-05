@@ -33,6 +33,7 @@ private:
 
 	vector<sSpaceObject> vecAsteroids;
 	vector<sLaser> vecLasers;
+	const float fLaserTime = 2;
 	sSpaceObject player;
 	int nScore;
 	bool bDead = false;
@@ -99,11 +100,11 @@ public:
 		vecAsteroids.clear();
 		vecLasers.clear();
 
-		vecAsteroids.push_back({ {20.0, 20.0}, {8.0f, -6.0f}, (int)16, 0.0f });
-		vecAsteroids.push_back({ {100.0, 20.0}, {-5.0f, -5.0f}, (int)16, 0.0f });
+		//vecAsteroids.push_back({ {20.0, 20.0}, {8.0f, -6.0f}, (int)16, 0.0f });
+		//vecAsteroids.push_back({ {100.0, 20.0}, {-5.0f, -5.0f}, (int)16, 0.0f });
 
 		player.position = olc::vf2d(ScreenWidth() * 0.5f, ScreenHeight() * 0.5f);
-		player.velocity = olc::vf2d(0, -5);
+		player.velocity = olc::vf2d(0, 0);
 		player.angle = 0;
 
 		nScore = 0;
@@ -130,7 +131,42 @@ public:
 
 		// Shoot laser
 		if (GetKey(olc::SPACE).bPressed)
-			vecLasers.push_back({ player.position, {50.0f * sinf(player.angle), -50.0f * cosf(player.angle)}, 2});
+		{
+			olc::vi2d vEndPos;
+			olc::vi2d vHorizontalIntersect;
+			olc::vi2d vVerticalIntersect;
+			float a = sin(player.angle) / cos(player.angle);
+
+			// horizontal collisions
+			if (cosf(player.angle) >= 0)
+			{
+				// Up
+				
+				vVerticalIntersect = olc::vf2d((player.position.y * tan(player.angle)) + player.position.x, 0);
+			}
+			else
+			{
+				// Down
+				vVerticalIntersect = olc::vf2d(((ScreenHeight() - player.position.y) * (tan(-player.angle))) + player.position.x, ScreenHeight() - 1);
+			}
+
+			// vertical collisions
+			if (sinf(player.angle) >= 0)
+			{
+				// Right side
+				vHorizontalIntersect = olc::vf2d(ScreenWidth() - 1, (ScreenWidth() - player.position.x) * (tan(player.angle + 1.57079f)) + player.position.y);
+			}
+			else
+			{
+				// Left side
+				vHorizontalIntersect = olc::vf2d(0, ((player.position.x) * (-tan(player.angle + 1.57079f))) + player.position.y);
+			}
+
+			vEndPos = (player.position - vHorizontalIntersect).mag2() > (player.position - vVerticalIntersect).mag2() ? vVerticalIntersect : vHorizontalIntersect;
+
+			vecLasers.push_back({ player.position, vEndPos, fLaserTime});
+		}
+
 
 		// Change position
 		player.position += player.velocity * fElapsedTime;
@@ -151,48 +187,24 @@ public:
 		}
 
 		vector<sSpaceObject> newAsteroids;
+	
 
-		// Update bullet position and velocity
+		// Update bullet time
 		for (auto& l : vecLasers)
-		{
 			l.timeLeft -= fElapsedTime;
 
-			//for (auto& a : vecAsteroids)
-			//{
-			//	if (IsPointInsideCircle(a.position, a.nSize, l.position))
-			//	{
-			//		// Asteroid hit
-			//		l.position.x = -100;
 
-			//		if (a.nSize > 4)
-			//		{
-			//			// Create to children
-			//			float angle1 = ((float)rand() / (float)(RAND_MAX) * 6.283185f);
-			//			float angle2 = ((float)rand() / (float)(RAND_MAX) * 6.283185f);
-
-			//			newAsteroids.push_back({ a.position, {10.0f * sinf(angle1), 10.0f * cosf(angle1)}, (int)a.nSize >> 1 , 0.0f });
-			//			newAsteroids.push_back({ a.position, {10.0f * sinf(angle2), 10.0f * cosf(angle2)}, (int)a.nSize >> 1 , 0.0f });
-			//		}
-
-			//		// Remove asteroid - Same approach as bullets
-			//		a.position.x = -100;
-			//		nScore += 100;
-			//	}
-			//}
-
-
+		if (vecLasers.size() > 0)
+		{
+			auto i = remove_if(vecLasers.begin(), vecLasers.end(), [&](sLaser o) { return (o.timeLeft < 0); });
+			if (i != vecLasers.end())
+				vecLasers.erase(i);
 		}
+
 
 		for (auto a : newAsteroids)
 			vecAsteroids.push_back(a);
 
-		// Remove asteroids that have been blown up
-		if (vecAsteroids.size() > 0)
-		{
-			auto i = remove_if(vecAsteroids.begin(), vecAsteroids.end(), [&](sSpaceObject o) { return (o.position.x < 0); });
-			if (i != vecAsteroids.end())
-				vecAsteroids.erase(i);
-		}
 
 		if (vecAsteroids.empty())
 		{
@@ -215,9 +227,15 @@ public:
 				{-10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, (int)16, 0.0f });
 		}
 
-		// Draw bullets
+		
+
+		// Draw lasers
 		for (auto& l : vecLasers)
-			DrawLine(l.sPosition, l.ePosition, olc::BLUE);
+		{
+			if (l.timeLeft > 0)
+				DrawLine(l.sPosition, l.ePosition, { 0,0,255, (uint8_t)(l.timeLeft * 255 / fLaserTime) });
+		}
+
 		
 		// Draw asteroids
 		for (auto& a : vecAsteroids)
