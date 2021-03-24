@@ -63,6 +63,21 @@ private:
 		WrapCoordinates(i.x, i.y, o.x, o.y);
 	}
 
+	void UnwrapCoordinates(float offset, float ix, float iy, float& ox, float& oy)
+	{
+		ox = ix;
+		oy = iy;
+		if (ix < 0.0f)	ox = ix + (float)ScreenWidth();
+		if (ix >= (float)ScreenWidth())	ox = ix - (float)ScreenWidth();
+		if (iy < 0.0f)	oy = iy + (float)ScreenHeight();
+		if (iy >= (float)ScreenHeight()) oy = iy - (float)ScreenHeight();
+	}
+
+	void UnwrapCoordinates(float offset, olc::vf2d i, olc::vf2d& o)
+	{
+		UnwrapCoordinates(offset, i.x, i.y, o.x, o.y);
+	}
+
 	virtual bool Draw(int32_t x, int32_t y, olc::Pixel p = olc::WHITE)
 	{
 		float ox = x;
@@ -102,12 +117,12 @@ public:
 		vecAsteroids.clear();
 		vecLasers.clear();
 
-		vecAsteroids.push_back({ {80, 20.0}, {8.0f, -6.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
+		vecAsteroids.push_back({ {80, 0}, {8.0f, -6.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		//vecAsteroids.push_back({ {100.0, 50.0}, {8.0f, -6.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 
-		player.position = olc::vf2d(ScreenWidth() * 0.5f, ScreenHeight() * 0.5f);
+		player.position = olc::vf2d(ScreenWidth() * 0.5f + 10, ScreenHeight() * 0.5f);
 		player.velocity = olc::vf2d(0, 0);
-		player.angle = 0;
+		player.angle = -0.2;
 		player.color = olc::WHITE;
 
 		nScore = 0;
@@ -137,37 +152,9 @@ public:
 		// Shoot laser
 		if (GetKey(olc::SPACE).bPressed)
 		{
-			olc::vi2d vEndPos;
-			olc::vi2d vHorizontalIntersect;
-			olc::vi2d vVerticalIntersect;
-			float a = sin(player.angle) / cos(player.angle);
 
-			// horizontal collisions
-			if (cosf(player.angle) >= 0)
-			{
-				// Up
-				vVerticalIntersect = olc::vf2d((player.position.y * tan(player.angle)) + player.position.x, 0);
-			}
-			else
-			{
-				// Down
-				vVerticalIntersect = olc::vf2d(((ScreenHeight() - player.position.y) * (tan(-player.angle))) + player.position.x, ScreenHeight() - 1);
-			}
-
-			// vertical collisions
-			if (sinf(player.angle) >= 0)
-			{
-				// Right side
-				vHorizontalIntersect = olc::vf2d(ScreenWidth() - 1, (ScreenWidth() - player.position.x) * (tan(player.angle + 1.57079f)) + player.position.y);
-			}
-			else
-			{
-				// Left side
-				vHorizontalIntersect = olc::vf2d(0, ((player.position.x) * (-tan(player.angle + 1.57079f))) + player.position.y);
-			}
-
-			vEndPos = (player.position - vHorizontalIntersect).mag2() > (player.position - vVerticalIntersect).mag2() ? vVerticalIntersect : vHorizontalIntersect;
-
+			olc::vf2d vEndPos;
+			CalculateLineEndPosition(player.angle, player.position, vEndPos);
 
 			// Intersect with asteroids
 
@@ -177,19 +164,20 @@ public:
 			olc::vf2d laserForward = olc::vf2d(sin(player.angle), -cos(player.angle));
 			olc::vf2d laserRight = olc::vf2d(-laserForward.y, laserForward.x);
 
-			vector<olc::vf2d> v1;
-			vector<olc::vf2d> v2;
+			vector<olc::vf2d> verticesRight;
+			vector<olc::vf2d> verticesLeft;
 
 			for (auto& a : vecAsteroids)
 			{
 
 				// Loop through every vertex on the asteroid and locate the intersecting verticies
-				bool rightSide = laserRight.dot(player.position - (a.position + a.vVerticies.front())) > 0; // which side is the vertex on
+				olc::vf2d pos;
+
+				WrapCoordinates(a.position + a.vVerticies.back(), pos);
+				bool rightSide = laserRight.dot(pos - player.position) > 0; // which side is the vertex on
 				for (int i = 0; i < a.vVerticies.size(); i++)
 				{
 					bool lastRightSide = rightSide;
-
-					olc::vf2d pos;
 					// Wrap the coordinates so we can intersect the vertex lines even when the asteroid is on the other side of the screen
 					WrapCoordinates(a.position + a.vVerticies[i], pos);
 
@@ -197,15 +185,16 @@ public:
 					if (laserForward.dot(pos - player.position) < 0)
 						continue;
 
-					rightSide = laserRight.dot(pos - player.position) > 0;
+					rightSide = laserRight.dot(a.position + a.vVerticies[i] - player.position) > 0;
+					std::cout << rightSide << " " << a.vVerticies[i] + a.position << std::endl;
 
 					if (rightSide)
 					{
-						v1.push_back(a.vVerticies[i]);
+						verticesRight.push_back(a.vVerticies[i]);
 					}
 					else
 					{
-						v2.push_back(a.vVerticies[i]);
+						verticesLeft.push_back(a.vVerticies[i]);
 					}
 
 					// If the verticies are on different sides of the laser
@@ -215,37 +204,86 @@ public:
 						if (nLastIndex < 0)
 							nLastIndex += a.vVerticies.size();
 
+
 						vIntersectingVerticies.push_back(a.vVerticies[nLastIndex]);	
 						vIntersectingVerticies.push_back(a.vVerticies[i]);
-						vIntersectingVerticiesIndex.push_back(v1.size());
-						vIntersectingVerticiesIndex.push_back(v2.size());
+						vIntersectingVerticiesIndex.push_back(verticesRight.size());
+						vIntersectingVerticiesIndex.push_back(verticesLeft.size());
 					}
 				}
 
 				// Cut the asteroid
 
-				// If we have not hit to sides 
+				// If we have not hit two sides 
 				if (vIntersectingVerticies.size() < 4)
 					continue;
 
 				olc::vf2d p1;
 				olc::vf2d p2;
-				LineLineIntersect(a.position + vIntersectingVerticies[0], a.position + vIntersectingVerticies[1], player.position, vEndPos, p1);
-				LineLineIntersect(a.position + vIntersectingVerticies[2], a.position + vIntersectingVerticies[3], player.position, vEndPos, p2);
+				olc::vf2d startPos;
+				olc::vf2d vertPos1;
+				olc::vf2d vertPos2;
+
+				// Vertex is in front of player
+				if (laserForward.dot(a.position + vIntersectingVerticies[0] - player.position) > 0)
+				{
+					LineLineIntersect(a.position + vIntersectingVerticies[0], a.position + vIntersectingVerticies[1], player.position, vEndPos, p1);
+				}
+				else // Vertex is wrapped behind
+				{
+					// Create new ray
+					startPos = vEndPos;
+					startPos.x = (int)startPos.x % (ScreenWidth() / 2);
+					startPos.y = (int)startPos.y % (ScreenHeight() / 2);
+
+				}
+
+				WrapCoordinates(a.position + vIntersectingVerticies[2], vertPos1);
+				WrapCoordinates(a.position + vIntersectingVerticies[3], vertPos2);
+				vecLasers.push_back({ a.position + vertPos1, a.position + vertPos2, 100 });
+
+				// Vertex is in front of player
+				cout << laserForward.dot(vertPos1 - player.position) << " beer" << endl;
+				if (laserForward.dot(vertPos1 - player.position) > 0)
+				{
+					LineLineIntersect(a.position + vIntersectingVerticies[2], a.position + vIntersectingVerticies[3], player.position, vEndPos, p2);
+				}
+				else
+				{
+					// Create new ray
+					startPos = vEndPos;
+					olc::vf2d offset;
+
+					if (startPos.x == 0.0f) { startPos.x = (float)ScreenWidth() - 1; offset.x = (float)ScreenWidth() - 1; }
+					else if (startPos.x == (float)ScreenWidth())	 startPos.x = 0;
+					if (startPos.y == 0.0f)	{ startPos.y = (float)ScreenHeight() - 1; offset.y = (float)ScreenHeight() - 1; }
+					else if (startPos.y == (float)ScreenHeight())  startPos.y = 0;
+					olc::vf2d vNewEndPos;
+					CalculateLineEndPosition(player.angle, startPos, vNewEndPos);
+					LineLineIntersect(vertPos1, vertPos2, startPos, vNewEndPos, p2);
+					vecLasers.push_back({ startPos, vNewEndPos, 1 });
+					p2 -= offset;
+					std::cout << startPos << " " << vNewEndPos << " " << p2 << std::endl;
+					vecLasers.push_back({ p2, p2, 100 });
+				}
+				
+
+				//WrapCoordinates(a.position + vIntersectingVerticies[2], pos1);
+				//WrapCoordinates(a.position + vIntersectingVerticies[3], pos2);
+
 				p1 -= a.position;
 				p2 -= a.position;
-	
 
 				//split the asteroid in two and add the new verticies
-				v1.insert(v1.begin() + vIntersectingVerticiesIndex[0], p1);
-				v2.insert(v2.begin() + vIntersectingVerticiesIndex[1], p1);
-				v1.insert(v1.begin() + vIntersectingVerticiesIndex[2], p2);
-				v2.insert(v2.begin() + vIntersectingVerticiesIndex[3], p2);
+				verticesRight.insert(verticesRight.begin() + vIntersectingVerticiesIndex[0], p1);
+				verticesLeft.insert(verticesLeft.begin() + vIntersectingVerticiesIndex[1], p1);
+				verticesRight.insert(verticesRight.begin() + vIntersectingVerticiesIndex[2], p2);
+				verticesLeft.insert(verticesLeft.begin() + vIntersectingVerticiesIndex[3], p2);
 
 				//newAsteroids.push_back({ a.position + olc::vf2d(0,0), laserRight * 2, a.angle, v1, olc::GREY });
 
 				a.velocity = -laserRight * 2;
-				a.vVerticies = v2;
+				a.vVerticies = verticesLeft;
 
 				vecLasers.push_back({ a.position + p1,a.position + p1, 1000 });
 				vecLasers.push_back({ a.position + p2,a.position + p2, 1000 });
@@ -332,7 +370,8 @@ public:
 		DrawWireFrameModel(player.vVerticies, player.position, player.angle, 1, player.color);
 
 		// Draw score
-		DrawString(2, 2, "SCORE: " + to_string(nScore));
+		//DrawString(2, 2, "SCORE: " + to_string(nScore));
+		DrawString(2, 2, to_string((int)player.position.x) + " " + to_string((int)player.position.y));
 
 		return true;
 	}
@@ -374,28 +413,68 @@ public:
 		}
 	}
 
+	void CalculateLineEndPosition(float a, olc::vf2d position, olc::vf2d& vEndPos)
+	{
+		olc::vi2d vHorizontalIntersect;
+		olc::vi2d vVerticalIntersect;
+
+		// horizontal collisions
+		if (cosf(a) >= 0)
+		{
+			// Up
+			vVerticalIntersect = olc::vf2d((position.y * tan(a)) + position.x, 0);
+			std::cout << "up" << vVerticalIntersect << std::endl;
+		}
+		else
+		{
+			// Down
+			vVerticalIntersect = olc::vf2d(((ScreenHeight() - position.y) * (tan(-a))) + position.x, ScreenHeight() - 1);
+			std::cout << "down";
+		}
+
+		// vertical collisions
+		if (sinf(a) >= 0)
+		{
+			// Right side
+			vHorizontalIntersect = olc::vf2d(ScreenWidth() - 1, (ScreenWidth() - position.x) * (tan(a + 1.57079f)) + position.y);
+			std::cout << "Right";
+		}
+		else
+		{
+			// Left side
+			vHorizontalIntersect = olc::vf2d(0, ((position.x) * (-tan(a + 1.57079f))) + position.y);
+			std::cout << "Left" << vHorizontalIntersect << std::endl;
+		}
+
+
+
+		vEndPos = (position - vHorizontalIntersect).mag2() > (position - vVerticalIntersect).mag2() ? vVerticalIntersect : vHorizontalIntersect;
+	}
+
 	///Calculate intersection of two lines.
-///\return true if found, false if not found or error
+	//return true if found, false if not found or error
 	bool LineLineIntersect(olc::vf2d p1, //Line 1 start
 		olc::vf2d p2, //Line 1 end
 		olc::vf2d p3, //Line 2 start
 		olc::vf2d p4, //Line 2 end
 		olc::vf2d& iOut) //Output 
 	{
+		std::cout << "p" << p1 << " " << p2 << std::endl;
+
 		float d = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
 
-		if (d == 0.0f)
-		{
-			return false;
-		}
+		//if (d == 0.0f)
+		//{
+		//	return false;
+		//}
 
 		float u = ((p3.x - p1.x) * (p4.y - p3.y) - (p3.y - p1.y) * (p4.x - p3.x)) / d;
 		float v = ((p3.x - p1.x) * (p2.y - p1.y) - (p3.y - p1.y) * (p2.x - p1.x)) / d;
 
-		if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f)
-		{
-			return false;
-		}
+		//if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f)
+		//{
+		//	return false;
+		//}
 
 		iOut.x = p1.x + u * (p2.x - p1.x);
 		iOut.y = p1.y + u * (p2.y - p1.y);
