@@ -24,6 +24,7 @@
     <ProjectGuid>{f1577cb7-eb97-4112-b873-3ff9ed503c5a}</ProjectGuid>
     <RootNamespace>Asteroids</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Disasteroids</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -139,10 +140,18 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Asteroids.cpp" />
+    <ClCompile Include="Disasteroids.cpp" />
+    <ClCompile Include="Entity.cpp" />
+    <ClCompile Include="Laser.cpp" />
+    <ClCompile Include="Player.cpp" />
+    <ClCompile Include="SpaceObject.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Entity.h" />
+    <ClInclude Include="Laser.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
+    <ClInclude Include="Player.h" />
+    <ClInclude Include="SpaceObject.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
