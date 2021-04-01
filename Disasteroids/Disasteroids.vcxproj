@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{f1577cb7-eb97-4112-b873-3ff9ed503c5a}</ProjectGuid>
+    <ProjectGuid>{08BC80AD-AAC3-43B7-B11C-6CA673421214}</ProjectGuid>
     <RootNamespace>Asteroids</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <ProjectName>Disasteroids</ProjectName>

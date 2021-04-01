@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30204.135
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Asteroids", "Asteroids\Asteroids.vcxproj", "{F1577CB7-EB97-4112-B873-3FF9ED503C5A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Disasteroids", "Disasteroids\Disasteroids.vcxproj", "{08BC80AD-AAC3-43B7-B11C-6CA673421214}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,14 +13,14 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{F1577CB7-EB97-4112-B873-3FF9ED503C5A}.Debug|x64.ActiveCfg = Debug|x64
-		{F1577CB7-EB97-4112-B873-3FF9ED503C5A}.Debug|x64.Build.0 = Debug|x64
-		{F1577CB7-EB97-4112-B873-3FF9ED503C5A}.Debug|x86.ActiveCfg = Debug|Win32
-		{F1577CB7-EB97-4112-B873-3FF9ED503C5A}.Debug|x86.Build.0 = Debug|Win32
-		{F1577CB7-EB97-4112-B873-3FF9ED503C5A}.Release|x64.ActiveCfg = Release|x64
-		{F1577CB7-EB97-4112-B873-3FF9ED503C5A}.Release|x64.Build.0 = Release|x64
-		{F1577CB7-EB97-4112-B873-3FF9ED503C5A}.Release|x86.ActiveCfg = Release|Win32
-		{F1577CB7-EB97-4112-B873-3FF9ED503C5A}.Release|x86.Build.0 = Release|Win32
+		{08BC80AD-AAC3-43B7-B11C-6CA673421214}.Debug|x64.ActiveCfg = Debug|x64
+		{08BC80AD-AAC3-43B7-B11C-6CA673421214}.Debug|x64.Build.0 = Debug|x64
+		{08BC80AD-AAC3-43B7-B11C-6CA673421214}.Debug|x86.ActiveCfg = Debug|Win32
+		{08BC80AD-AAC3-43B7-B11C-6CA673421214}.Debug|x86.Build.0 = Debug|Win32
+		{08BC80AD-AAC3-43B7-B11C-6CA673421214}.Release|x64.ActiveCfg = Release|x64
+		{08BC80AD-AAC3-43B7-B11C-6CA673421214}.Release|x64.Build.0 = Release|x64
+		{08BC80AD-AAC3-43B7-B11C-6CA673421214}.Release|x86.ActiveCfg = Release|Win32
+		{08BC80AD-AAC3-43B7-B11C-6CA673421214}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

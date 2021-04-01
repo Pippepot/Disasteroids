@@ -8,13 +8,13 @@ using namespace std;
 
 
 // Override base class with your custom functionality
-class Asteroids : public olc::PixelGameEngine
+class Disasteroids : public olc::PixelGameEngine
 {
 public:
-	Asteroids()
+	Disasteroids()
 	{
 		// Name you application
-		sAppName = "Asteroids";
+		sAppName = "Disasteroids";
 	}
 
 private:
@@ -80,7 +80,7 @@ public:
 		vecAsteroids.clear();
 		vecLasers.clear();
 
-		vecAsteroids.push_back({ {ScreenWidth() * 0.5f, 0}, {0.0f, -0.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
+		vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenWidth() * 0.2f}, {0.0f, -0.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		//vecAsteroids.push_back({ {100.0, 50.0}, {8.0f, -6.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		player = Player(olc::vf2d(ScreenWidth() * 0.5f + 10, ScreenHeight() * 0.5f),
 			olc::vf2d(0, 0),
@@ -356,8 +356,8 @@ public:
 		// Update asteroids position and velocity
 		for (auto& a : vecAsteroids)
 		{
-			a.Update(fElapsedTime);
-			a.angle += 0.5f * fElapsedTime;
+			a.Update(fElapsedTime * 0.2f);
+			a.angle += 0.1f * fElapsedTime;
 			WrapCoordinates(a.position, a.position);
 		}
 
@@ -546,7 +546,7 @@ public:
 
 int main()
 {
-	Asteroids game;
+	Disasteroids game;
 	if (game.Construct(100*2, 100*2, 4, 4))
 		game.Start();
 	return 0;
