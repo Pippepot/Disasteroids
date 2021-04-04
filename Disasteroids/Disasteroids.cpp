@@ -80,7 +80,7 @@ public:
 		vecAsteroids.clear();
 		vecLasers.clear();
 
-		vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenWidth() * 0.2f}, {0.0f, -0.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
+		vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenWidth() * 0.1f}, {0.0f, -0.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		//vecAsteroids.push_back({ {100.0, 50.0}, {8.0f, -6.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		player = Player(olc::vf2d(ScreenWidth() * 0.5f + 10, ScreenHeight() * 0.5f),
 			olc::vf2d(0, 0),
@@ -134,6 +134,9 @@ public:
 				olc::vf2d currentVertexWrapped;
 				olc::vf2d lastVertexWrapped;
 				olc::vf2d offset;
+				olc::vf2d tempVert1;
+				olc::vf2d tempVert2;
+				bool useTempVerts = false;
 				bool isWrapped;
 				bool lastWrapped;
 
@@ -158,20 +161,25 @@ public:
 					// Check if the vertecies are not both wrapped
 					if ((olc::vi2d)(lastVertexWrapped - currentVertexWrapped) != (olc::vi2d)(lastVertex - currentVertex))
 					{
-						lastVertexIndex = i;
-						lastVertex = currentVertex;
-						lastVertexWrapped = currentVertexWrapped;
-						continue;
+						// Check for both last and current vertex
+
+						// Lastvertex
+						bool lWrap = lastVertex != lastVertexWrapped;
+						olc::vf2d lOffset = lWrap ? currentVertexWrapped - a.position - lastVertex : olc::vf2d(0, 0);
+						olc::vf2d currentVertLastWrap = a.vVerticies[i] + offset;
+
+						// Linelineintersect between edges of screen and two offset vertices
+
+
+						// Make temporary vertex
+
+						// Test against temporary vertex
 					}
 
 					olc::vf2d intersection;
 					if (LineLineIntersect(lastVertexWrapped, currentVertexWrapped, player.position, vEndPos, intersection))
 					{
-						//olc::vf2d rotatedIntersection = intersection;
 						intersection -= a.position + offset;
-						//intersection.x = rotatedIntersection.x * cosf(-a.angle) - rotatedIntersection.y * sinf(-a.angle);
-						//intersection.y = rotatedIntersection.x * sinf(-a.angle) + rotatedIntersection.y * cosf(-a.angle);
-						
 
 						vIntersectingVerticiesIndicies.push_back(lastVertexIndex);
 						vIntersections.push_back(intersection);
@@ -203,7 +211,6 @@ public:
 					CalculateLineEndPosition(player.angle, vStartPos, vNewEndPos);
 					// The new ray should not intersect with the already intersected geometry
 					 
-					cout << vNewEndPos << endl;
 					for (int i = 0; i < a.vVerticies.size(); i++)
 					{
 						olc::vf2d currentVertex;
@@ -226,11 +233,7 @@ public:
 						olc::vf2d intersection;
 						if (LineLineIntersect(lastVertexWrapped, currentVertexWrapped, vStartPos, vNewEndPos, intersection))
 						{
-							//olc::vf2d rotatedIntersection = intersection;
 							intersection -= a.position + offset;
-							//intersection.x = rotatedIntersection.x * cosf(-a.angle) - rotatedIntersection.y * sinf(-a.angle);
-							//intersection.y = rotatedIntersection.x * sinf(-a.angle) + rotatedIntersection.y * cosf(-a.angle);
-
 
 							vIntersectingVerticiesIndicies.push_back(lastVertexIndex);
 							vIntersections.push_back(intersection);
@@ -357,7 +360,7 @@ public:
 		for (auto& a : vecAsteroids)
 		{
 			a.Update(fElapsedTime * 0.2f);
-			a.angle += 0.1f * fElapsedTime;
+			//a.angle += 0.1f * fElapsedTime;
 			WrapCoordinates(a.position, a.position);
 		}
 
@@ -439,8 +442,6 @@ public:
 
 	void DrawWireFrameModel(const vector<olc::vf2d>& vecModelCoordinates, olc::vf2d pos, float r = 0.0f, float s = 1.0f, olc::Pixel p = olc::WHITE)
 	{
-		// pair.first = x coordinate
-		// pair.second = y coordinate
 
 		// Create translated model vector of coordinate pairs
 		vector<olc::vf2d> vecTransformedCoordinates;
