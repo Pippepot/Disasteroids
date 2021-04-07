@@ -18,7 +18,7 @@ public:
 	}
 
 private:
-	const int nAsteroidSize = 16;
+	const int nAsteroidSize = 20;
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
 	Player player = Player();
@@ -59,7 +59,7 @@ public:
 	bool OnUserCreate() override
 	{
 
-		int verts = 16;
+		int verts = 4;
 		for (int i = 0; i < verts; i++)
 		{
 			// Counter clockwise
@@ -134,8 +134,8 @@ public:
 				olc::vf2d currentVertexWrapped;
 				olc::vf2d lastVertexWrapped;
 				olc::vf2d offset;
-				olc::vf2d tempVert1;
-				olc::vf2d tempVert2;
+				olc::vf2d testVert1;
+				olc::vf2d testVert2;
 				bool useTempVerts = false;
 				bool isWrapped;
 				bool lastWrapped;
@@ -158,26 +158,50 @@ public:
 					isWrapped = currentVertex != currentVertexWrapped;
 					offset = isWrapped ? currentVertexWrapped - a.position - a.vVerticies[i] : olc::vf2d(0,0);
 
+					testVert1 = currentVertex;
+					testVert2 = lastVertex;
+
 					// Check if the vertecies are not both wrapped
 					if ((olc::vi2d)(lastVertexWrapped - currentVertexWrapped) != (olc::vi2d)(lastVertex - currentVertex))
 					{
 						// Check for both last and current vertex
 
 						// Lastvertex
-						bool lWrap = lastVertex != lastVertexWrapped;
-						olc::vf2d lOffset = lWrap ? currentVertexWrapped - a.position - lastVertex : olc::vf2d(0, 0);
-						olc::vf2d currentVertLastWrap = a.vVerticies[i] + offset;
+						bool vWrap = lastVertex != lastVertexWrapped;
+						olc::vf2d vOffset = vWrap ? lastVertexWrapped + a.position - lastVertex : a.position;
+						olc::vf2d currentVertLastWrap = a.vVerticies[i] + vOffset;
+
+						olc::vf2d lastIntersection;
 
 						// Linelineintersect between edges of screen and two offset vertices
+						LineScreenIntersect(lastVertexWrapped, currentVertLastWrap, lastIntersection);
+						vecLasers.push_back({ lastIntersection, lastIntersection, olc::BLUE, 10 });
+						
+						// Current vertex
+						vWrap = currentVertex != currentVertexWrapped;
+						vOffset = vWrap ? currentVertexWrapped + a.position - currentVertex : a.position;
+						olc::vf2d lastVertCurrentWrap = lastVertex + vOffset;
+
+						olc::vf2d currentIntersection;
+
+						// Linelineintersect between edges of screen and two offset vertices
+						LineScreenIntersect(currentVertexWrapped, lastVertCurrentWrap, currentIntersection);
+						vecLasers.push_back({ currentIntersection, currentIntersection, olc::BLUE, 10 });
 
 
 						// Make temporary vertex
+						if (lastIntersection != olc::vf2d())
+							testVert1 = lastIntersection;
+
+						if (currentIntersection != olc::vf2d())
+							testVert2 = currentIntersection;
 
 						// Test against temporary vertex
 					}
 
+
 					olc::vf2d intersection;
-					if (LineLineIntersect(lastVertexWrapped, currentVertexWrapped, player.position, vEndPos, intersection))
+					if (LineLineIntersect(testVert1, testVert2, player.position, vEndPos, intersection))
 					{
 						intersection -= a.position + offset;
 
@@ -186,6 +210,7 @@ public:
 						lastWrapped = isWrapped;
 					}
 
+					
 					lastVertexIndex = i;
 					lastVertex = currentVertex;
 					lastVertexWrapped = currentVertexWrapped;
@@ -486,13 +511,11 @@ public:
 		{
 			// Up
 			vVerticalIntersect = olc::vf2d((position.y * tan(a)) + position.x, 0);
-			std::cout << "up" << vVerticalIntersect << std::endl;
 		}
 		else
 		{
 			// Down
 			vVerticalIntersect = olc::vf2d(((ScreenHeight() - position.y) * (tan(-a))) + position.x, ScreenHeight() - 1);
-			std::cout << "down";
 		}
 
 		// vertical collisions
@@ -500,18 +523,28 @@ public:
 		{
 			// Right side
 			vHorizontalIntersect = olc::vf2d(ScreenWidth() - 1, (ScreenWidth() - position.x) * (tan(a + 1.57079f)) + position.y);
-			std::cout << "Right";
 		}
 		else
 		{
 			// Left side
 			vHorizontalIntersect = olc::vf2d(0, ((position.x) * (-tan(a + 1.57079f))) + position.y);
-			std::cout << "Left" << vHorizontalIntersect << std::endl;
 		}
 
 
 
 		vEndPos = (position - vHorizontalIntersect).mag2() > (position - vVerticalIntersect).mag2() ? vVerticalIntersect : vHorizontalIntersect;
+	}
+
+	bool LineScreenIntersect(olc::vf2d p1, olc::vf2d p2, olc::vf2d& iOut)
+	{
+		if (LineLineIntersect(p1, p2, olc::vf2d(0,0), olc::vf2d(ScreenWidth(), 0), iOut))
+			return true;
+		if (LineLineIntersect(p1, p2, olc::vf2d(ScreenWidth(), 0), olc::vf2d(ScreenWidth(), ScreenHeight()), iOut))
+			return true;
+		if (LineLineIntersect(p1, p2, olc::vf2d(ScreenWidth(), ScreenHeight()), olc::vf2d(0, ScreenHeight()), iOut))
+			return true;
+		if (LineLineIntersect(p1, p2, olc::vf2d(0, ScreenHeight()), olc::vf2d(0, 0), iOut))
+			return true;
 	}
 
 	///Calculate intersection of two lines.
@@ -532,7 +565,7 @@ public:
 		float u = ((p3.x - p1.x) * (p4.y - p3.y) - (p3.y - p1.y) * (p4.x - p3.x)) / d;
 		float v = ((p3.x - p1.x) * (p2.y - p1.y) - (p3.y - p1.y) * (p2.x - p1.x)) / d;
 
-		if (u < -0.01f || u > 1.0f || v < -0.01f || v > 1.0f)
+		if (u < -0.005f || u > 1.0f || v < -0.005f || v > 1.0f)
 		{
 			return false;
 		}
