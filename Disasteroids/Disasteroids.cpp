@@ -59,11 +59,11 @@ public:
 	bool OnUserCreate() override
 	{
 
-		int verts = 4;
+		int verts = 16;
 		for (int i = 0; i < verts; i++)
 		{
 			// Counter clockwise
-			float noise = (float)rand() / (float)RAND_MAX * 0.4f + 2.0f;
+			float noise = (float)rand() / (float)RAND_MAX * 0.6f + 1.6f;
 			vecModelAsteroid.push_back({
 				noise * sinf(((float)i / (float)verts) * 6.28318f) * nAsteroidSize,
 				noise * cosf(((float)i / (float)verts) * 6.28318f) * nAsteroidSize
@@ -82,9 +82,9 @@ public:
 
 		vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenWidth() * 0.1f}, {0.0f, -0.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		//vecAsteroids.push_back({ {100.0, 50.0}, {8.0f, -6.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
-		player = Player(olc::vf2d(ScreenWidth() * 0.5f + 10, ScreenHeight() * 0.5f),
+		player = Player(olc::vf2d(ScreenWidth() * 0.5f + 40, ScreenHeight() * 0.7f),
 			olc::vf2d(0, 0),
-			0.047f,
+			-2.555f,
 			{
 			{ 0.0f, -5.5f },
 			{ -2.5f, 2.5f },
@@ -134,11 +134,13 @@ public:
 				olc::vf2d currentVertexWrapped;
 				olc::vf2d lastVertexWrapped;
 				olc::vf2d offset;
-				olc::vf2d testVert1;
-				olc::vf2d testVert2;
+				olc::vf2d currentVertTest;
+				olc::vf2d lastVertTest;
 				bool useTempVerts = false;
 				bool isWrapped;
 				bool lastWrapped;
+				bool sameWrapAsLaser;
+				bool intersectionWrapped;
 
 				olc::vf2d lastVertex;
 				lastVertex.x = a.vVerticies.back().x * cosf(a.angle) - a.vVerticies.back().y * sinf(a.angle);
@@ -156,58 +158,64 @@ public:
 
 					WrapCoordinates(currentVertex, currentVertexWrapped);
 					isWrapped = currentVertex != currentVertexWrapped;
-					offset = isWrapped ? currentVertexWrapped - a.position - a.vVerticies[i] : olc::vf2d(0,0);
 
-					testVert1 = currentVertex;
-					testVert2 = lastVertex;
+					offset = currentVertexWrapped - a.position - a.vVerticies[i];
+
+					currentVertTest = currentVertexWrapped;
+					lastVertTest = lastVertexWrapped;
 
 					// Check if the vertecies are not both wrapped
 					if ((olc::vi2d)(lastVertexWrapped - currentVertexWrapped) != (olc::vi2d)(lastVertex - currentVertex))
 					{
-						// Check for both last and current vertex
+						// If the currentvertex is wrapped, make temporary vertex
+						// Else make a temporary vertex out of the last vertex
+						sameWrapAsLaser = (currentVertexWrapped - vEndPos).mag() < ScreenHeight() * 0.5f;
+						if (sameWrapAsLaser)
+						{
+							// same wap move last vertex
+							// different wap move current vertex
+							olc::vf2d vOffset = currentVertexWrapped - currentVertex;
+							olc::vf2d lastVertCurrentWrap = lastVertex + vOffset;
 
-						// Lastvertex
-						bool vWrap = lastVertex != lastVertexWrapped;
-						olc::vf2d vOffset = vWrap ? lastVertexWrapped + a.position - lastVertex : a.position;
-						olc::vf2d currentVertLastWrap = a.vVerticies[i] + vOffset;
+							olc::vf2d currentIntersection;
 
-						olc::vf2d lastIntersection;
+							//// Linelineintersect between edges of screen and two offset vertices
+							LineScreenIntersect(currentVertexWrapped, lastVertCurrentWrap, currentIntersection);
+							lastVertTest = currentIntersection;
+							currentIntersection.y -= 1;
+							offset = currentVertexWrapped - currentVertex;
 
-						// Linelineintersect between edges of screen and two offset vertices
-						LineScreenIntersect(lastVertexWrapped, currentVertLastWrap, lastIntersection);
-						vecLasers.push_back({ lastIntersection, lastIntersection, olc::BLUE, 10 });
-						
-						// Current vertex
-						vWrap = currentVertex != currentVertexWrapped;
-						vOffset = vWrap ? currentVertexWrapped + a.position - currentVertex : a.position;
-						olc::vf2d lastVertCurrentWrap = lastVertex + vOffset;
+							vecLasers.push_back({ currentIntersection, currentIntersection, olc::BLUE, 10 });
+						}
+						else
+						{
+							olc::vf2d vOffset = lastVertexWrapped - lastVertex;
+							olc::vf2d currentVertLastWrap = currentVertex + vOffset;
+							// Do something different based on wrap
+							olc::vf2d currentIntersection;
+							// Since the last vertex is on the opposite wrap, invert the wrap for the new current vertex
+							isWrapped = !isWrapped;
+							offset = lastVertexWrapped - lastVertex;
 
-						olc::vf2d currentIntersection;
+							//// Linelineintersect between edges of screen and two offset vertices
+							LineScreenIntersect(lastVertexWrapped, currentVertLastWrap, currentIntersection);
+							currentVertTest = currentIntersection;
 
-						// Linelineintersect between edges of screen and two offset vertices
-						LineScreenIntersect(currentVertexWrapped, lastVertCurrentWrap, currentIntersection);
-						vecLasers.push_back({ currentIntersection, currentIntersection, olc::BLUE, 10 });
+							vecLasers.push_back({ currentIntersection, currentIntersection, olc::BLUE, 10 });
+						}
 
-
-						// Make temporary vertex
-						if (lastIntersection != olc::vf2d())
-							testVert1 = lastIntersection;
-
-						if (currentIntersection != olc::vf2d())
-							testVert2 = currentIntersection;
-
-						// Test against temporary vertex
 					}
 
 
 					olc::vf2d intersection;
-					if (LineLineIntersect(testVert1, testVert2, player.position, vEndPos, intersection))
+					if (LineLineIntersect(currentVertTest, lastVertTest, player.position, vEndPos, intersection))
 					{
 						intersection -= a.position + offset;
 
 						vIntersectingVerticiesIndicies.push_back(lastVertexIndex);
 						vIntersections.push_back(intersection);
 						lastWrapped = isWrapped;
+						intersectionWrapped = isWrapped;
 					}
 
 					
@@ -223,13 +231,13 @@ public:
 				{
 					// Create new ray
 					olc::vf2d vStartPos = vEndPos;
-					offset = olc::vf2d(0, 0);
+					olc::vf2d screenOffset = olc::vf2d();
 
 					// Wrap around
-					if (vStartPos.x == 0.0f) { vStartPos.x = (float)ScreenWidth() - 1; offset.x = ScreenWidth() - 1; }
-					else if (vStartPos.x ==  (float)ScreenWidth() - 1) { vStartPos.x = 0; offset.x = 0; }
-					if (vStartPos.y == 0.0f) { vStartPos.y = (float)ScreenHeight() - 1; offset.y = ScreenHeight() - 1; }
-					else if (vStartPos.y ==  (float)ScreenHeight() - 1) { vStartPos.y = 0; offset.y = 0; }
+					if (vStartPos.x == 0.0f) { vStartPos.x = (float)ScreenWidth() - 1; screenOffset.x = ScreenWidth() - 1; }
+					else if (vStartPos.x ==  (float)ScreenWidth() - 1) { vStartPos.x = 0; screenOffset.x = -ScreenWidth(); }
+					if (vStartPos.y == 0.0f) { vStartPos.y = (float)ScreenHeight() - 1; screenOffset.y = ScreenHeight() - 1; }
+					else if (vStartPos.y ==  (float)ScreenHeight() - 1) { vStartPos.y = 0; screenOffset.y = -ScreenHeight(); }
 
 					lastVertexIndex = a.vVerticies.size() - 1;
 					olc::vf2d vNewEndPos;
@@ -245,21 +253,56 @@ public:
 
 						WrapCoordinates(currentVertex, currentVertexWrapped);
 						isWrapped = currentVertex != currentVertexWrapped;
+						offset = olc::vf2d();
+						screenOffset = currentVertexWrapped - currentVertex;
+
+						currentVertTest = currentVertexWrapped;
+						lastVertTest = lastVertexWrapped;
 
 						// Check if the vertecies are not both wrapped and if the vertex is the opposite wrap of the first vertex
-						if (isWrapped == lastWrapped || (olc::vi2d)(lastVertexWrapped - currentVertexWrapped) != (olc::vi2d)(lastVertex - currentVertex))
+						if ((olc::vi2d)(lastVertexWrapped - currentVertexWrapped) != (olc::vi2d)(lastVertex - currentVertex))
 						{
-							lastVertexIndex = i;
-							lastVertex = currentVertex;
-							lastVertexWrapped = currentVertexWrapped;
-							continue;
+
+							sameWrapAsLaser = (currentVertexWrapped - vStartPos).mag() < ScreenHeight() * 0.5f;
+							if (!sameWrapAsLaser)
+							{
+								olc::vf2d vOffset = lastVertexWrapped - lastVertex;
+								olc::vf2d currentVertLastWrap = currentVertex + vOffset;
+
+								olc::vf2d currentIntersection;
+
+								//// Linelineintersect between edges of screen and two offset vertices
+								LineScreenIntersect(lastVertexWrapped, currentVertLastWrap, currentIntersection);
+								currentVertTest = currentIntersection;
+								currentIntersection.y -= 1;
+								offset = vStartPos - vEndPos;
+								isWrapped = lastVertex != lastVertexWrapped;
+								vecLasers.push_back({ currentIntersection, currentIntersection, olc::BLUE, 10 });
+							}
+							else
+							{
+								olc::vf2d vOffset = currentVertexWrapped - currentVertex;
+								olc::vf2d lastVertCurrentWrap = lastVertex + vOffset;
+
+								olc::vf2d currentIntersection;
+
+								//// Linelineintersect between edges of screen and two offset vertices
+								LineScreenIntersect(currentVertexWrapped, lastVertCurrentWrap, currentIntersection);
+								lastVertTest = currentIntersection;
+								offset = currentVertexWrapped - currentVertex - screenOffset;
+
+
+								vecLasers.push_back({ currentIntersection, currentIntersection, olc::BLUE, 10 });
+
+
+							}
 						}
 						cout << currentVertexWrapped << endl;
 						olc::vf2d intersection;
-						if (LineLineIntersect(lastVertexWrapped, currentVertexWrapped, vStartPos, vNewEndPos, intersection))
+						if (isWrapped != intersectionWrapped && LineLineIntersect(currentVertTest, lastVertTest, vStartPos, vNewEndPos, intersection))
 						{
-							intersection -= a.position + offset;
-
+							intersection -= a.position + offset + screenOffset;
+							// - a.position + vertwrapped - vert + offset
 							vIntersectingVerticiesIndicies.push_back(lastVertexIndex);
 							vIntersections.push_back(intersection);
 							break;
@@ -269,7 +312,8 @@ public:
 						lastVertex = currentVertex;
 						lastVertexWrapped = currentVertexWrapped;
 					}
-					//vecLasers.push_back({ vStartPos, vNewEndPos, olc::BLUE, 1 });
+					player.angle += 0.05f;
+					vecLasers.push_back({ vStartPos, vNewEndPos, olc::BLUE, 1 });
 				}
 
 				// Cut the asteroid
@@ -349,11 +393,11 @@ public:
 				olc::vf2d newVelocity1 = 0.1f * (newPosition1 - newPosition2) + a.velocity;
 				olc::vf2d newVelocity2 = 0.1f * (newPosition2 - newPosition1) + a.velocity;
 
-				newAsteroids.push_back({ newPosition2, newVelocity2, 0, vVertices2, olc::GREY });
+				newAsteroids.push_back({ newPosition2, olc::vf2d()/*newVelocity2*/, 0, vVertices2, olc::GREY });
 
 				a.position = newPosition1;
 				a.angle = 0;
-				a.velocity = newVelocity1;
+				//a.velocity = newVelocity1;
 				a.vVerticies = vVertices1;
 				a.color = olc::YELLOW;
 			}
@@ -362,7 +406,7 @@ public:
 		}
 
 		// Create the newly added asteroids
-		for (auto a : newAsteroids)
+		for (auto& a : newAsteroids)
 			vecAsteroids.push_back(a);
 
 
