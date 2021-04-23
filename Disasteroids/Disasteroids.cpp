@@ -80,7 +80,7 @@ public:
 		vecAsteroids.clear();
 		vecLasers.clear();
 
-		vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenWidth() * 0.1f}, {0.0f, -0.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
+		vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenWidth() * 0.5f}, {0.0f, -0.0f}, 1.1f, vecModelAsteroid});
 		//vecAsteroids.push_back({ {100.0, 50.0}, {8.0f, -6.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		player = Player(olc::vf2d(ScreenWidth() * 0.5f + 40, ScreenHeight() * 0.7f),
 			olc::vf2d(0, 0),
@@ -159,7 +159,7 @@ public:
 					WrapCoordinates(currentVertex, currentVertexWrapped);
 					isWrapped = currentVertex != currentVertexWrapped;
 
-					offset = currentVertexWrapped - a.position - a.vVerticies[i];
+					offset = currentVertexWrapped - currentVertex;
 
 					currentVertTest = currentVertexWrapped;
 					lastVertTest = lastVertexWrapped;
@@ -313,7 +313,7 @@ public:
 						lastVertexWrapped = currentVertexWrapped;
 					}
 					player.angle += 0.05f;
-					vecLasers.push_back({ vStartPos, vNewEndPos, olc::BLUE, 1 });
+					//vecLasers.push_back({ vStartPos, vNewEndPos, olc::BLUE, 1 });
 				}
 
 				// Cut the asteroid
@@ -393,13 +393,13 @@ public:
 				olc::vf2d newVelocity1 = 0.1f * (newPosition1 - newPosition2) + a.velocity;
 				olc::vf2d newVelocity2 = 0.1f * (newPosition2 - newPosition1) + a.velocity;
 
-				newAsteroids.push_back({ newPosition2, olc::vf2d()/*newVelocity2*/, 0, vVertices2, olc::GREY });
+				newAsteroids.push_back({ newPosition2, newVelocity2, 0, vVertices2});
 
 				a.position = newPosition1;
 				a.angle = 0;
-				//a.velocity = newVelocity1;
+				a.velocity = newVelocity1;
 				a.vVerticies = vVertices1;
-				a.color = olc::YELLOW;
+				a.CalculateMass();
 			}
 
 			vecLasers.push_back({ player.position, vEndPos, olc::BLUE, 1});
@@ -408,7 +408,6 @@ public:
 		// Create the newly added asteroids
 		for (auto& a : newAsteroids)
 			vecAsteroids.push_back(a);
-
 
 		UpdateEntities(fElapsedTime);
 
@@ -429,9 +428,17 @@ public:
 		for (auto& a : vecAsteroids)
 		{
 			a.Update(fElapsedTime * 0.2f);
-			//a.angle += 0.1f * fElapsedTime;
+			a.angle += 0.1f * fElapsedTime;
 			WrapCoordinates(a.position, a.position);
 		}
+
+		// Check for overlap
+		for (int m = 0; m < vecAsteroids.size(); m++)
+			for (int n = m + 1; n < vecAsteroids.size(); n++)
+			{
+				vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n]); break;
+			}
+
 
 		for (auto& l : vecLasers)
 		{
@@ -495,11 +502,11 @@ public:
 
 			vecAsteroids.push_back({ {30.0f * (-player.velocity.y / fLength) + player.position.x,
 											  30.0f * player.velocity.x / fLength + player.position.y},
-				{10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid, olc::YELLOW });
+				{10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid});
 
 			vecAsteroids.push_back({ {-30.0f * (-player.velocity.y / fLength) + player.position.x,
 											  -30.0f * player.velocity.x / fLength + player.position.y},
-				{-10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid, olc::YELLOW });
+				{-10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid});
 		}
 	}
 
@@ -609,7 +616,7 @@ public:
 		float u = ((p3.x - p1.x) * (p4.y - p3.y) - (p3.y - p1.y) * (p4.x - p3.x)) / d;
 		float v = ((p3.x - p1.x) * (p2.y - p1.y) - (p3.y - p1.y) * (p2.x - p1.x)) / d;
 
-		if (u < -0.005f || u > 1.0f || v < -0.005f || v > 1.0f)
+		if (u < 0.0f || u > 1.0f || v < 0.0f || v > 1.0f)
 		{
 			return false;
 		}
