@@ -59,7 +59,7 @@ public:
 	bool OnUserCreate() override
 	{
 
-		int verts = 16;
+		int verts = 26;
 		for (int i = 0; i < verts; i++)
 		{
 			// Counter clockwise
@@ -80,7 +80,7 @@ public:
 		vecAsteroids.clear();
 		vecLasers.clear();
 
-		vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenWidth() * 0.5f}, {0.0f, -0.0f}, 1.1f, vecModelAsteroid});
+		vecAsteroids.push_back({ {0, 0}, {0.0f, 0.0f}, 1.1f, vecModelAsteroid});
 		//vecAsteroids.push_back({ {100.0, 50.0}, {8.0f, -6.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		player = Player(olc::vf2d(ScreenWidth() * 0.5f + 40, ScreenHeight() * 0.7f),
 			olc::vf2d(0, 0),
@@ -124,13 +124,34 @@ public:
 			olc::vf2d vEndPos;
 			CalculateLineEndPosition(player.angle, player.position, vEndPos);
 
+			// Old model. No good!
+			// 1 For every asteroid
+			// 2 Find last and current vertex
+			// 3 Rotate and wrap them
+			// 4 Wrap the other vertex or current vertex based on where the laser ends if they don't have the same wrap. pfew!
+			// 5 Check if lazer intersects the line between the verts
+			// if only hit one line
+			// 6 Wrap laser around
+			// 7 Repeat step 2 through 5 with the wrapped laser
+			// 8 Make new verts
+			// 9 Stich asteroids together from new verts
+			// 10 Two astoroids are built!
+			//
+			// New model. Better!
+			// For every asteroid
+			// Check hits against every transformed vertex
+			// Translate transformed verticies to raw verticies
+			//  
+			//
+
+
 			// Intersect with asteroids
 			for (auto& a : vecAsteroids)
 			{
 				vector<olc::vf2d> vIntersections;
 				vector<int> vIntersectingVerticiesIndicies;
 				// Loop through every vertex on the asteroid and locate the intersecting verticies
-				int lastVertexIndex = a.vVerticies.size() - 1;
+				int lastVertexIndex = a.vRawVerticies.size() - 1;
 				olc::vf2d currentVertexWrapped;
 				olc::vf2d lastVertexWrapped;
 				olc::vf2d offset;
@@ -143,17 +164,17 @@ public:
 				bool intersectionWrapped;
 
 				olc::vf2d lastVertex;
-				lastVertex.x = a.vVerticies.back().x * cosf(a.angle) - a.vVerticies.back().y * sinf(a.angle);
-				lastVertex.y = a.vVerticies.back().x * sinf(a.angle) + a.vVerticies.back().y * cosf(a.angle);
+				lastVertex.x = a.vRawVerticies.back().x * cosf(a.angle) - a.vRawVerticies.back().y * sinf(a.angle);
+				lastVertex.y = a.vRawVerticies.back().x * sinf(a.angle) + a.vRawVerticies.back().y * cosf(a.angle);
 				lastVertex += a.position;
 
 				WrapCoordinates(lastVertex, lastVertexWrapped);
 
-				for (int i = 0; i < a.vVerticies.size(); i++)
+				for (int i = 0; i < a.vRawVerticies.size(); i++)
 				{
 					olc::vf2d currentVertex;
-					currentVertex.x = a.vVerticies[i].x * cosf(a.angle) - a.vVerticies[i].y * sinf(a.angle);
-					currentVertex.y = a.vVerticies[i].x * sinf(a.angle) + a.vVerticies[i].y * cosf(a.angle);
+					currentVertex.x = a.vRawVerticies[i].x * cosf(a.angle) - a.vRawVerticies[i].y * sinf(a.angle);
+					currentVertex.y = a.vRawVerticies[i].x * sinf(a.angle) + a.vRawVerticies[i].y * cosf(a.angle);
 					currentVertex += a.position;
 
 					WrapCoordinates(currentVertex, currentVertexWrapped);
@@ -173,13 +194,13 @@ public:
 						if (sameWrapAsLaser)
 						{
 							// same wap move last vertex
-							// different wap move current vertex
+							// different wrap move current vertex
 							olc::vf2d vOffset = currentVertexWrapped - currentVertex;
 							olc::vf2d lastVertCurrentWrap = lastVertex + vOffset;
 
 							olc::vf2d currentIntersection;
 
-							//// Linelineintersect between edges of screen and two offset vertices
+							// Linelineintersect between edges of screen and two offset vertices
 							LineScreenIntersect(currentVertexWrapped, lastVertCurrentWrap, currentIntersection);
 							lastVertTest = currentIntersection;
 							currentIntersection.y -= 1;
@@ -206,7 +227,6 @@ public:
 
 					}
 
-
 					olc::vf2d intersection;
 					if (LineLineIntersect(currentVertTest, lastVertTest, player.position, vEndPos, intersection))
 					{
@@ -217,15 +237,12 @@ public:
 						lastWrapped = isWrapped;
 						intersectionWrapped = isWrapped;
 					}
-
 					
 					lastVertexIndex = i;
 					lastVertex = currentVertex;
 					lastVertexWrapped = currentVertexWrapped;
 				}
 
-				cout << "Intersection count before: " << vIntersections.size() << endl;
-				cout << "angle " << player.angle << endl;
 				// The asteroid may be wrapped
 				if (vIntersections.size() == 1)
 				{
@@ -233,22 +250,22 @@ public:
 					olc::vf2d vStartPos = vEndPos;
 					olc::vf2d screenOffset = olc::vf2d();
 
-					// Wrap around
+					// Wrap ray around
 					if (vStartPos.x == 0.0f) { vStartPos.x = (float)ScreenWidth() - 1; screenOffset.x = ScreenWidth() - 1; }
 					else if (vStartPos.x ==  (float)ScreenWidth() - 1) { vStartPos.x = 0; screenOffset.x = -ScreenWidth(); }
 					if (vStartPos.y == 0.0f) { vStartPos.y = (float)ScreenHeight() - 1; screenOffset.y = ScreenHeight() - 1; }
 					else if (vStartPos.y ==  (float)ScreenHeight() - 1) { vStartPos.y = 0; screenOffset.y = -ScreenHeight(); }
 
-					lastVertexIndex = a.vVerticies.size() - 1;
+					lastVertexIndex = a.vRawVerticies.size() - 1;
 					olc::vf2d vNewEndPos;
 					CalculateLineEndPosition(player.angle, vStartPos, vNewEndPos);
 					// The new ray should not intersect with the already intersected geometry
 					 
-					for (int i = 0; i < a.vVerticies.size(); i++)
+					for (int i = 0; i < a.vRawVerticies.size(); i++)
 					{
 						olc::vf2d currentVertex;
-						currentVertex.x = a.vVerticies[i].x * cosf(a.angle) - a.vVerticies[i].y * sinf(a.angle);
-						currentVertex.y = a.vVerticies[i].x * sinf(a.angle) + a.vVerticies[i].y * cosf(a.angle);
+						currentVertex.x = a.vRawVerticies[i].x * cosf(a.angle) - a.vRawVerticies[i].y * sinf(a.angle);
+						currentVertex.y = a.vRawVerticies[i].x * sinf(a.angle) + a.vRawVerticies[i].y * cosf(a.angle);
 						currentVertex += a.position;
 
 						WrapCoordinates(currentVertex, currentVertexWrapped);
@@ -286,7 +303,7 @@ public:
 
 								olc::vf2d currentIntersection;
 
-								//// Linelineintersect between edges of screen and two offset vertices
+								// Linelineintersect between edges of screen and two offset vertices
 								LineScreenIntersect(currentVertexWrapped, lastVertCurrentWrap, currentIntersection);
 								lastVertTest = currentIntersection;
 								offset = currentVertexWrapped - currentVertex - screenOffset;
@@ -312,13 +329,13 @@ public:
 						lastVertex = currentVertex;
 						lastVertexWrapped = currentVertexWrapped;
 					}
-					player.angle += 0.05f;
+
 					//vecLasers.push_back({ vStartPos, vNewEndPos, olc::BLUE, 1 });
 				}
 
 				// Cut the asteroid
-				cout << "Intersection count after: " << vIntersections.size() << endl;
- 				// If we have not hit two sides 
+
+ 				// If we have not hit two sides just ignore
 				if (vIntersections.size() < 2)
 					continue;
 
@@ -327,6 +344,7 @@ public:
 				vector<olc::vf2d> vVertices1;
 				vector<olc::vf2d> vVertices2;
 
+				// Put indecies into the right order. Somehow...
 				if (vIntersectingVerticiesIndicies[0] > vIntersectingVerticiesIndicies[1])
 				{
 					swap(vIntersectingVerticiesIndicies[0], vIntersectingVerticiesIndicies[1]);
@@ -337,11 +355,11 @@ public:
 				}
 
 				olc::vf2d vertToAdd;
-				for (int i = 0; i < a.vVerticies.size(); i++)
+				for (int i = 0; i < a.vRawVerticies.size(); i++)
 				{
 					if (i > vIntersectingVerticiesIndicies[0] && i <= vIntersectingVerticiesIndicies[1])
 					{
-						Rotate(a.angle, a.vVerticies[i], vertToAdd);
+						Rotate(a.angle, a.vRawVerticies[i], vertToAdd);
 						vVertices1.push_back(vertToAdd);
 
 						if (i == vIntersectingVerticiesIndicies[1])
@@ -352,7 +370,7 @@ public:
 					}
 					else
 					{
-						Rotate(a.angle, a.vVerticies[i], vertToAdd);
+						Rotate(a.angle, a.vRawVerticies[i], vertToAdd);
 						vVertices2.push_back(vertToAdd);
 
 						if (i == vIntersectingVerticiesIndicies[0])
@@ -398,7 +416,7 @@ public:
 				a.position = newPosition1;
 				a.angle = 0;
 				a.velocity = newVelocity1;
-				a.vVerticies = vVertices1;
+				a.vRawVerticies = vVertices1;
 				a.CalculateMass();
 			}
 
@@ -421,6 +439,8 @@ public:
 		DestroyDeadEntities();
 
 		player.Update(fElapsedTime);
+		player.CalculateVerticiesWorldSpace();
+		ProcessVerticiesForCollision(player);
 		// Wrap spaceship coordiantes
 		WrapCoordinates(player.position, player.position);
 
@@ -430,14 +450,24 @@ public:
 			a.Update(fElapsedTime * 0.2f);
 			a.angle += 0.1f * fElapsedTime;
 			WrapCoordinates(a.position, a.position);
+			a.CalculateVerticiesWorldSpace();
+			ProcessVerticiesForCollision(a);
 		}
 
 		// Check for overlap
 		for (int m = 0; m < vecAsteroids.size(); m++)
+		{
+
+			if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
+				ResetGame();
+				return;
+			}
+
 			for (int n = m + 1; n < vecAsteroids.size(); n++)
 			{
-				vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n]); break;
+				vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n]);
 			}
+		}
 
 
 		for (auto& l : vecLasers)
@@ -472,15 +502,24 @@ public:
 	void DrawEntities()
 	{
 		// Draw asteroids
-		for (auto& a : vecAsteroids)
-			DrawWireFrameModel(a.vVerticies, a.position, a.angle, 1, a.color);
+		//for (auto& a : vecAsteroids)
+		//	DrawWireFrameModel(a.vRawVerticies, a.position, a.angle, 1, a.color);
+
+		for (auto& a : vecAsteroids) {
+
+			DrawWireFrameModel(a.vWorldVerticies, olc::vf2d(), 0, 1, olc::YELLOW);
+
+			for (auto& v : a.vProcessedVerticies) {
+				DrawWireFrameModel(v, olc::vf2d(), 0, 1, olc::BLUE);
+			}
+		}
 	
 		// Draw lasers
 		for (auto& l : vecLasers)
 			DrawLine(l.position, l.endPosition, l.color);
 
 		// Draw player
-		DrawWireFrameModel(player.vVerticies, player.position, player.angle, 1, player.color);
+		DrawWireFrameModel(player.vRawVerticies, player.position, player.angle, 1, player.color);
 
 		// Draw score
 		//DrawString(2, 2, "SCORE: " + to_string(nScore));
@@ -507,6 +546,72 @@ public:
 			vecAsteroids.push_back({ {-30.0f * (-player.velocity.y / fLength) + player.position.x,
 											  -30.0f * player.velocity.x / fLength + player.position.y},
 				{-10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid});
+		}
+	}
+
+	void ProcessVerticiesForCollision(SpaceObject& obj)
+	{
+		// map needs compare function. vf2d does not have a compare function.
+		// Therefore do not use wrap
+
+		// The indices corespond to eachother in these lists (key, value)
+		std::vector<olc::vf2d> worldWraps;
+		obj.vProcessedVerticies.clear();
+
+		olc::vf2d lastVert = obj.vWorldVerticies.back();
+		olc::vf2d currentVert;
+		olc::vf2d nextVert;
+		olc::vf2d currentWrap;
+
+		for (int i = 0; i < obj.vWorldVerticies.size(); i++)
+		{
+			// Assign next and current vertex
+			nextVert = obj.vWorldVerticies[(i + 1) % obj.vWorldVerticies.size()];
+			currentVert = obj.vWorldVerticies[i];
+			
+			// Check Wrap
+			WrapCoordinates(currentVert, currentWrap);
+			currentWrap = currentVert - currentWrap;
+
+			// If current or next or previous with wrap is not added to map, add it
+			auto key = find(worldWraps.begin(), worldWraps.end(), currentWrap);
+
+			// Not found
+			if (key == worldWraps.end()) {
+				
+				std::vector<olc::vf2d> verts;
+				verts.push_back(lastVert);
+				verts.push_back(currentVert);
+				verts.push_back(nextVert);
+
+				worldWraps.push_back(currentWrap);
+				obj.vProcessedVerticies.push_back(verts);
+			}
+			else
+			{
+				// Found. Add last current and last vert if not already found in vector
+				auto notFound = [](vector<olc::vf2d> v, olc::vf2d vert)
+				{
+					return !std::count(v.begin(), v.end(), vert);
+				};
+
+				int index = std::distance(worldWraps.begin(), key);
+				auto v = obj.vProcessedVerticies[index];
+
+				if (notFound(v, lastVert))
+					v.push_back(lastVert);
+
+				if (notFound(v, currentVert))
+					v.push_back(currentVert);
+
+				if (notFound(v, nextVert))
+					v.push_back(nextVert);
+
+				obj.vProcessedVerticies[index] = v;
+			}
+
+			// Assign last vertex after calculations
+			lastVert = currentVert;
 		}
 	}
 
@@ -550,6 +655,7 @@ public:
 			DrawLine(vecTransformedCoordinates[i % verts], vecTransformedCoordinates[j % verts], p);
 			Draw(vecTransformedCoordinates[i % verts].x, vecTransformedCoordinates[i % verts].y, olc::RED);
 		}
+		Draw(vecTransformedCoordinates[1].x, vecTransformedCoordinates[1].y, olc::RED);
 	}
 
 	void CalculateLineEndPosition(float a, olc::vf2d position, olc::vf2d& vEndPos)
@@ -586,16 +692,16 @@ public:
 		vEndPos = (position - vHorizontalIntersect).mag2() > (position - vVerticalIntersect).mag2() ? vVerticalIntersect : vHorizontalIntersect;
 	}
 
-	bool LineScreenIntersect(olc::vf2d p1, olc::vf2d p2, olc::vf2d& iOut)
+	void LineScreenIntersect(olc::vf2d p1, olc::vf2d p2, olc::vf2d& iOut)
 	{
 		if (LineLineIntersect(p1, p2, olc::vf2d(0,0), olc::vf2d(ScreenWidth(), 0), iOut))
-			return true;
+			return;
 		if (LineLineIntersect(p1, p2, olc::vf2d(ScreenWidth(), 0), olc::vf2d(ScreenWidth(), ScreenHeight()), iOut))
-			return true;
+			return;
 		if (LineLineIntersect(p1, p2, olc::vf2d(ScreenWidth(), ScreenHeight()), olc::vf2d(0, ScreenHeight()), iOut))
-			return true;
+			return;
 		if (LineLineIntersect(p1, p2, olc::vf2d(0, ScreenHeight()), olc::vf2d(0, 0), iOut))
-			return true;
+			return;
 	}
 
 	///Calculate intersection of two lines.
