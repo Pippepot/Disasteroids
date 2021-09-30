@@ -58,6 +58,8 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 	SpaceObject* poly1 = this;
 	SpaceObject* poly2 = &other;
 
+	bool hasCollided = false;
+
 	// For each polygon, for each subpolygon
 	for (int shape = 0; shape < 2; shape++)
 	{
@@ -74,7 +76,9 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 				// Check diagonals of this polygon...
 				for (int p = 0; p < poly1->vProcessedVerticies[i1].size(); p++)
 				{
-					olc::vf2d line_r1s = poly1->position;
+					// This boy needs to be different for every wrap
+					// This boy do be different forevery wrap now :) Still don't work tho
+					olc::vf2d line_r1s = poly1->vWorldPositions[i1];
 					olc::vf2d line_r1e = poly1->vProcessedVerticies[i1][p];
 
 					olc::vf2d displacement = { 0,0 };
@@ -94,6 +98,7 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 						{
 							displacement.x += (1.0f - t1) * (line_r1e.x - line_r1s.x);
 							displacement.y += (1.0f - t1) * (line_r1e.y - line_r1s.y);
+							hasCollided = true;
 						}
 					}
 
@@ -104,7 +109,37 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 		}
 	}
 
-	// Cant overlap if static collision is resolved
-	return false;
+	if (hasCollided)
+	{
+		float fDistance = sqrtf((poly1->position.x - poly2->position.x) * (poly1->position.x - poly2->position.x) + (poly1->position.y - poly2->position.y) * (poly1->position.y - poly2->position.y));
+
+		// Normal
+		float nx = (poly2->position.x - poly1->position.x) / fDistance;
+		float ny = (poly2->position.y - poly1->position.y) / fDistance;
+
+		// Tangent
+		float tx = -ny;
+		float ty = nx;
+
+		// Dot product tangent
+		float dpTan1 = poly1->velocity.x * tx + poly1->velocity.y * ty;
+		float dpTan2 = poly2->velocity.x * tx + poly2->velocity.y * ty;
+
+		// Dot product Normal
+		float dpNorm1 = poly1->velocity.x * nx + poly1->velocity.y * ny;
+		float dpNorm2 = poly2->velocity.x * nx + poly2->velocity.y * ny;
+
+		// Conservation of momentum in 1D
+		float m1 = (dpNorm1 * (poly1->mass - poly2->mass) + 2.0f * poly2->mass * dpNorm2) / (poly1->mass + poly2->mass);
+		float m2 = (dpNorm2 * (poly2->mass - poly1->mass) + 2.0f * poly1->mass * dpNorm1) / (poly1->mass + poly2->mass);
+
+		poly1->velocity.x = tx * dpTan1 + nx * m1;
+		poly1->velocity.y = ty * dpTan1 + ny * m1;
+		poly2->velocity.x = tx * dpTan2 + nx * m2;
+		poly2->velocity.y = ty * dpTan2 + ny * m2;
+	}
+
+	// Can't overlap if static collision is resolved
+	return hasCollided;
 }
 
