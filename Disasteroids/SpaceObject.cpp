@@ -1,14 +1,15 @@
 #include "SpaceObject.h"
 #pragma warning( disable : 26451 )
 
-SpaceObject::SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<olc::vf2d> verts)
+SpaceObject::SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<olc::vf2d> verts, olc::Pixel col)
 {
 	position = pos;
 	velocity = vel;
 	angle = ang;
 	vRawVerticies = verts;
 	bDead = false;
-	mass = CalculateMass();
+	CalculateMass();
+	color = col;
 }
 
 void SpaceObject::Update(float fElapsedTime)
@@ -16,16 +17,19 @@ void SpaceObject::Update(float fElapsedTime)
 	position += velocity * fElapsedTime;
 }
 
-float SpaceObject::CalculateMass()
+void SpaceObject::Kill()
 {
-	float m = 0;
+	bDead = true;
+}
+
+void SpaceObject::CalculateMass()
+{
+	mass = 0;
 	for (auto& v : vRawVerticies)
 	{
-		m += v.mag();
+		mass += v.mag();
 	}
-	m /= vRawVerticies.size();
-	color = m > 8 ? olc::YELLOW : olc::GREY;
-	return m;
+	mass /= vRawVerticies.size();
 }
 
 

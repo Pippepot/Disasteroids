@@ -5,10 +5,11 @@ class SpaceObject :
 {
 public:
 	SpaceObject() = default;
-	SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<olc::vf2d> verts);
+	SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<olc::vf2d> verts, olc::Pixel col);
 	bool ShapeOverlap_DIAGS_STATIC(SpaceObject& other);
 	virtual void Update(float fElapsedTime) override;
-	float CalculateMass();
+	void Kill();
+	void CalculateMass();
 	void CalculateVerticiesWorldSpace();
 	olc::vf2d velocity;
 	float angle;

@@ -19,9 +19,10 @@ public:
 
 private:
 	const int nAsteroidSize = 20;
+	const float nAsteroidBreakMass = 8.0f;
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
-	Player player = Player();
+	SpaceObject player;
 	int nScore;
 
 	vector<olc::vf2d> vecModelAsteroid;
@@ -80,11 +81,11 @@ public:
 		vecAsteroids.clear();
 		vecLasers.clear();
 
-		vecAsteroids.push_back({ {300, 300}, {0.0f, 0.0f}, 1.1f, vecModelAsteroid});
-		//vecAsteroids.push_back({ {100.0, 50.0}, {8.0f, -6.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
-		player = Player(olc::vf2d(ScreenWidth() * 0.5f + 40, ScreenHeight() * 0.7f),
-			olc::vf2d(0, 0),
-			-2.555f,
+		//vecAsteroids.push_back({ {300, 300}, {-20.0f, 60.0f}, 1.1f, vecModelAsteroid, olc::YELLOW});
+		//vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenHeight() * 0.1f}, {5.0f, -25.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
+		player = SpaceObject(olc::vf2d(ScreenWidth() * 0.5f, ScreenHeight() * 0.5f),
+			olc::vf2d(0, -10),
+			0.0f,
 			{
 			{ 0.0f, -5.5f },
 			{ -2.5f, 2.5f },
@@ -92,8 +93,12 @@ public:
 			{ 2.5f, 2.5f }
 			},
 			olc::WHITE);
-
 		
+		float fLength = player.velocity.mag();
+
+		vecAsteroids.push_back({ {30.0f * (-player.velocity.y / fLength) + player.position.x,
+								  30.0f * player.velocity.x / fLength + player.position.y},
+	{10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid, olc::YELLOW });
 
 		nScore = 0;
 	}
@@ -154,8 +159,13 @@ public:
 		{
 
 			if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
-				//ResetGame();
-				//return;
+				// Hit a big asteroid. Game over
+				if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
+					ResetGame();
+					return;
+				}
+
+				vecAsteroids[m].Kill();	
 			}
 
 			for (int n = m + 1; n < vecAsteroids.size(); n++)
@@ -166,27 +176,28 @@ public:
 		}
 
 		// TODO Fix multiple collisions. Pinching
-		while (collidingObjects.size() > 0)
-		{
-			for (int i = 0; i < vecAsteroids.size(); i++)
-			{
-				if (collidingObjects[0] == &vecAsteroids[i])
-					continue;
-
-				if (collidingObjects[0]->ShapeOverlap_DIAGS_STATIC(vecAsteroids[i])) {
-					collidingObjects.push_back(&vecAsteroids[i]);
-					collidingObjects.push_back(collidingObjects[0]);
-				}
-
-				collidingObjects.erase(collidingObjects.begin());
-			}
-
-		}
+		
+		//while (collidingObjects.size() > 0)
+		//{
+		//	for (int i = 0; i < vecAsteroids.size(); i++)
+		//	{
+		//		if (collidingObjects[0] == &vecAsteroids[i])
+		//			continue;
+		//
+		//		if (collidingObjects[0]->ShapeOverlap_DIAGS_STATIC(vecAsteroids[i])) {
+		//			collidingObjects.push_back(&vecAsteroids[i]);
+		//			collidingObjects.push_back(collidingObjects[0]);
+		//		}
+		//
+		//		collidingObjects.erase(collidingObjects.begin());
+		//	}
+		//
+		//}
 
 		for (auto& l : vecLasers)
 		{
 			l.Update(fElapsedTime);
-			l.color.a = (uint8_t)(l.timeLeft * 255 / l.maxTime);
+			l.color.a = max((l.timeLeft * 255 / l.maxTime), 0);
 		}
 
 		DrawEntities();
@@ -215,12 +226,9 @@ public:
 	void DrawEntities()
 	{
 		// Draw asteroids
-		//for (auto& a : vecAsteroids)
-		//	DrawWireFrameModel(a.vRawVerticies, a.position, a.angle, 1, a.color);
-
 		for (auto& a : vecAsteroids) {
 
-			DrawWireFrameModel(a.vWorldVerticies, olc::vf2d(), 0, 1, olc::YELLOW);
+			DrawWireFrameModel(a.vWorldVerticies, olc::vf2d(), 0, 1, a.color);
 		}
 	
 		// Draw lasers
@@ -231,7 +239,7 @@ public:
 		DrawWireFrameModel(player.vRawVerticies, player.position, player.angle, 1, player.color);
 
 		// Draw score
-		//DrawString(2, 2, "SCORE: " + to_string(nScore));
+		DrawString(2, 2, "SCORE: " + to_string(nScore));
 	}
 
 	void CheckWinCondition()
@@ -250,11 +258,21 @@ public:
 
 			vecAsteroids.push_back({ {30.0f * (-player.velocity.y / fLength) + player.position.x,
 											  30.0f * player.velocity.x / fLength + player.position.y},
-				{10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid});
+				{10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid, olc::YELLOW});
+
+
+		}
+	}
+
+	// TODO: Fix. spawn in semicircle around player
+	void SpawnAsteroids(int amount) {
+		for (int i = 0; i < amount; i++)
+		{
+			float fLength = player.velocity.mag();
 
 			vecAsteroids.push_back({ {-30.0f * (-player.velocity.y / fLength) + player.position.x,
-											  -30.0f * player.velocity.x / fLength + player.position.y},
-				{-10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid});
+								  -30.0f * player.velocity.x / fLength + player.position.y},
+	{-10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		}
 	}
 
@@ -289,15 +307,19 @@ public:
 		// For every asteroid
 		for (auto& a : vecAsteroids)
 		{
+			// TODO: Doesn't work when wrapping. oof
 			// For every list of processed verticies
+			olc::vf2d firstIntersection;
+			olc::vf2d secondIntersection;
+			int firstIntersectionIndex = -1;
+			int secondIntersectionIndex = -1;
+
 			for (int listIndex = 0; listIndex < a.vProcessedVerticies.size(); listIndex++)
 			{
-				olc::vf2d firstIntersection;
-				olc::vf2d secondIntersection;
-				int firstIntersectionIndex = -1;
-				int secondIntersectionIndex = -1;
+				if (firstIntersectionIndex != -1)
+					break;
 
-				// For every processed vertex
+				// For every processed vertex. Check if there is an intersection and where it is
 				for (int vertIndex = 0; vertIndex < a.vProcessedVerticies[listIndex].size() - 1; vertIndex++)
 				{
 					// Possibly do some optimization. AABB
@@ -305,113 +327,135 @@ public:
 						// Intersection is in wrapped world space. Transform to world space
 						firstIntersection += a.position - a.vWorldPositions[listIndex];
 						firstIntersectionIndex = a.vProcessedVerticiesRawIndicies[listIndex] + vertIndex;
-						vecLasers.push_back({ firstIntersection, firstIntersection, olc::GREEN, 10 });
 						break;
 					}
 				}
 
-				// Hit one side
-				if (firstIntersectionIndex != -1)
+			}
+
+			// Laser doesn't hit the asteroid
+			if (firstIntersectionIndex == -1)
+				continue;
+
+			for (int listIndex = 0; listIndex < a.vProcessedVerticies.size(); listIndex++)
+			{
+				if (secondIntersectionIndex != -1)
+					break;
+
+				// Find second intersection
+				for (int vertIndex = 0; vertIndex < a.vWorldVerticies.size(); vertIndex++)
 				{
-					for (int vertIndex = 0; vertIndex < a.vWorldVerticies.size(); vertIndex++)
-					{
-						olc::vf2d lineDirection = vEndPos - player.position;
-						lineDirection = lineDirection.norm();
-						olc::vf2d vNewEndPos = firstIntersection + lineDirection * 1000;
-						// Possibly do some optimization. AABB
-						if (LineLineIntersect(a.vWorldVerticies[vertIndex], a.vWorldVerticies[(vertIndex + 1) % a.vWorldVerticies.size()], firstIntersection + lineDirection, vNewEndPos, secondIntersection)) {
-							secondIntersectionIndex = a.vProcessedVerticiesRawIndicies[listIndex] + vertIndex;
-							vecLasers.push_back({ secondIntersection, secondIntersection, olc::MAGENTA, 10 });
-							break;
-						}
-					}
+					if (vertIndex + a.vProcessedVerticiesRawIndicies[listIndex] == firstIntersectionIndex)
+						continue;
 
-					// Hit both. Slice asteroid
-					if (secondIntersectionIndex != -1)
-					{
-						olc::vf2d averageVertexPosition1;
-						olc::vf2d averageVertexPosition2;
-						vector<olc::vf2d> vVertices1;
-						vector<olc::vf2d> vVertices2;
-
-						//// Put indecies into the right order. Somehow...
-						//if (vIntersectingVerticiesIndicies[0] > vIntersectingVerticiesIndicies[1])
-						//{
-						//	swap(vIntersectingVerticiesIndicies[0], vIntersectingVerticiesIndicies[1]);
-						//}
-						//else
-						//{
-						//	swap(vIntersections[0], vIntersections[1]);
-						//}
-
-						for (int i = 0; i < a.vWorldVerticies.size(); i++)
-						{
-							if (i > firstIntersectionIndex && i <= secondIntersectionIndex)
-							{
-								vVertices1.push_back(a.vWorldVerticies[i]);
-
-								if (i == secondIntersectionIndex)
-								{
-									vVertices1.push_back(secondIntersection);
-									vVertices2.push_back(secondIntersection);
-								}
-							}
-							else
-							{
-								vVertices2.push_back(a.vWorldVerticies[i]);
-
-								if (i == firstIntersectionIndex)
-								{
-									vVertices1.push_back(firstIntersection);
-									vVertices2.push_back(firstIntersection);
-								}
-							}
-						}
-
-						// Make new center
-						for (auto& v : vVertices1)
-						{
-							averageVertexPosition1 += v;
-						}
-
-						for (auto& v : vVertices2)
-						{
-							averageVertexPosition2 += v;
-						}
-
-						averageVertexPosition1 /= vVertices1.size();
-						averageVertexPosition2 /= vVertices2.size();
-
-						for (auto& v : vVertices1)
-						{
-							v -= averageVertexPosition1;
-						}
-
-						for (auto& v : vVertices2)
-						{
-							v -= averageVertexPosition2;
-						}
-
-						olc::vf2d newVelocity1 = 0.1f * (averageVertexPosition1 - averageVertexPosition2) + a.velocity;
-						olc::vf2d newVelocity2 = 0.1f * (averageVertexPosition2 - averageVertexPosition1) + a.velocity;
-
-						newAsteroids.push_back({ averageVertexPosition2, newVelocity2, 0, vVertices2 });
-
-						a.position = averageVertexPosition1;
-						a.angle = 0;
-						a.velocity = newVelocity1;
-						a.vRawVerticies = vVertices1;
-						a.CalculateMass();
+					olc::vf2d lineDirection = vEndPos - player.position;
+					lineDirection = lineDirection.norm();
+					olc::vf2d vNewEndPos = firstIntersection + lineDirection * 1000;
+					olc::vf2d vNewStartPos = firstIntersection - lineDirection * 1000;
+					// Possibly do some optimization. AABB
+					if (LineLineIntersect(a.vWorldVerticies[vertIndex], a.vWorldVerticies[(vertIndex + 1) % a.vWorldVerticies.size()], vNewStartPos, vNewEndPos, secondIntersection)) {
+						secondIntersectionIndex = a.vProcessedVerticiesRawIndicies[listIndex] + vertIndex;
+						break;
 					}
 				}
 			}
 
-			vecLasers.push_back({ player.position, vEndPos, olc::BLUE, 1 });
+			// Hit both. Slice asteroid
+			if (secondIntersectionIndex == -1)
+				continue;
 
-			// Create the newly added asteroids
-			for (auto& a : newAsteroids)
-				vecAsteroids.push_back(a);
+			olc::vf2d averageVertexPosition1;
+			olc::vf2d averageVertexPosition2;
+			vector<olc::vf2d> vVertices1;
+			vector<olc::vf2d> vVertices2;
+
+			// Swap. Because it works if we do.
+			if (firstIntersectionIndex > secondIntersectionIndex) {
+				int tempIndex = firstIntersectionIndex;
+				firstIntersectionIndex = secondIntersectionIndex;
+				secondIntersectionIndex = tempIndex;
+
+				olc::vf2d tempVert = firstIntersection;
+				firstIntersection = secondIntersection;
+				secondIntersection = tempVert;
+			}
+
+			for (int i = 0; i < a.vWorldVerticies.size(); i++)
+			{
+				if (i > firstIntersectionIndex && i <= secondIntersectionIndex)
+				{
+					vVertices1.push_back(a.vWorldVerticies[i]);
+
+					if (i == secondIntersectionIndex)
+					{
+						vVertices1.push_back(secondIntersection);
+						vVertices2.push_back(secondIntersection);
+					}
+				}
+				else
+				{
+					vVertices2.push_back(a.vWorldVerticies[i]);
+
+					if (i == firstIntersectionIndex)
+					{
+						vVertices1.push_back(firstIntersection);
+						vVertices2.push_back(firstIntersection);
+					}
+				}
+			}
+
+			// Make new center
+			for (auto& v : vVertices1)
+			{
+				averageVertexPosition1 += v;
+			}
+
+			for (auto& v : vVertices2)
+			{
+				averageVertexPosition2 += v;
+			}
+
+			averageVertexPosition1 /= vVertices1.size();
+			averageVertexPosition2 /= vVertices2.size();
+
+			for (auto& v : vVertices1)
+			{
+				v -= averageVertexPosition1;
+			}
+
+			for (auto& v : vVertices2)
+			{
+				v -= averageVertexPosition2;
+			}
+
+			olc::vf2d newVelocity1 = 0.1f * (averageVertexPosition1 - averageVertexPosition2) + a.velocity;
+			olc::vf2d newVelocity2 = 0.1f * (averageVertexPosition2 - averageVertexPosition1) + a.velocity;
+
+			SpaceObject newAsteroid = { averageVertexPosition2, newVelocity2, 0, vVertices2, olc::YELLOW };
+
+			if (newAsteroid.mass < nAsteroidBreakMass)
+				newAsteroid.color = olc::GREY;
+
+			newAsteroids.push_back(newAsteroid);
+
+
+			a.position = averageVertexPosition1;
+			a.angle = 0;
+			a.velocity = newVelocity1;
+			a.vRawVerticies = vVertices1;
+			a.CalculateMass();
+
+			if (a.mass < nAsteroidBreakMass)
+				a.color = olc::GREY;
 		}
+
+		vecLasers.push_back({ player.position, vEndPos, olc::BLUE, 1 });
+
+		// Create the newly added asteroids
+		for (auto& a : newAsteroids)
+			vecAsteroids.push_back(a);
+
+		// Terrible fucken code
 		/*
 		// Intersect with asteroids
 		for (auto& a : vecAsteroids)
@@ -684,19 +728,25 @@ public:
 		// Therefore do not use wrap
 
 		// The indices corespond to eachother in these lists (key, value)
+		
+		int vertCount = obj.vWorldVerticies.size();
+
+		if (vertCount < 2)
+			return;
+
 		obj.vProcessedVerticies.clear();
 		obj.vProcessedVerticiesRawIndicies.clear();
 		obj.vWorldPositions.clear();
 
-		olc::vf2d lastVert = obj.vWorldVerticies.back();
+		olc::vf2d lastVert = obj.vWorldVerticies[0];
 		olc::vf2d currentVert;
 		olc::vf2d nextVert;
 		olc::vf2d currentWrap;
 
-		for (int i = 0; i < obj.vWorldVerticies.size(); i++)
+		for (int i = 1; i < vertCount; i++)
 		{
 			// Assign next and current vertex
-			nextVert = obj.vWorldVerticies[(i + 1) % obj.vWorldVerticies.size()];
+			nextVert = obj.vWorldVerticies[(i + 1) % vertCount];
 			currentVert = obj.vWorldVerticies[i];
 			
 			// Check Wrap
@@ -717,7 +767,7 @@ public:
 
 				obj.vWorldPositions.push_back(currentWrap + obj.position);
 				obj.vProcessedVerticies.push_back(verts);
-				obj.vProcessedVerticiesRawIndicies.push_back(i);
+				obj.vProcessedVerticiesRawIndicies.push_back(i-1);
 			}
 			else
 			{
@@ -784,9 +834,9 @@ public:
 		{
 			int j = (i + 1);
 			DrawLine(vecTransformedCoordinates[i % verts], vecTransformedCoordinates[j % verts], p);
-			Draw(vecTransformedCoordinates[i % verts].x, vecTransformedCoordinates[i % verts].y, olc::RED);
+			//Draw(vecTransformedCoordinates[i % verts].x, vecTransformedCoordinates[i % verts].y, olc::RED);
 		}
-		Draw(vecTransformedCoordinates[1].x, vecTransformedCoordinates[1].y, olc::RED);
+		//Draw(vecTransformedCoordinates[1].x, vecTransformedCoordinates[1].y, olc::RED);
 	}
 
 	void CalculateLineEndPosition(float a, olc::vf2d position, olc::vf2d& vEndPos)
