@@ -18,7 +18,7 @@ public:
 	}
 
 private:
-	const int nAsteroidSize = 20;
+	const int nAsteroidSize = 8;
 	const float nAsteroidBreakMass = 8.0f;
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
@@ -94,12 +94,7 @@ public:
 			},
 			olc::WHITE);
 		
-		float fLength = player.velocity.mag();
-
-		vecAsteroids.push_back({ {30.0f * (-player.velocity.y / fLength) + player.position.x,
-								  30.0f * player.velocity.x / fLength + player.position.y},
-	{10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid, olc::YELLOW });
-
+		SpawnAsteroids(3);
 		nScore = 0;
 	}
 
@@ -256,11 +251,7 @@ public:
 			// be wrapped by th enext asteroid update
 			float fLength = player.velocity.mag();
 
-			vecAsteroids.push_back({ {30.0f * (-player.velocity.y / fLength) + player.position.x,
-											  30.0f * player.velocity.x / fLength + player.position.y},
-				{10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid, olc::YELLOW});
-
-
+			SpawnAsteroids(2);
 		}
 	}
 
@@ -270,9 +261,26 @@ public:
 		{
 			float fLength = player.velocity.mag();
 
-			vecAsteroids.push_back({ {-30.0f * (-player.velocity.y / fLength) + player.position.x,
-								  -30.0f * player.velocity.x / fLength + player.position.y},
-	{-10.0f * (-player.velocity.y / fLength), 10.0f * player.velocity.x / fLength}, 0.0f, vecModelAsteroid, olc::YELLOW });
+			float vxUnit = player.velocity.x / fLength;
+			float vyUnit = player.velocity.y / fLength;
+
+			float xMultiplier = cos(-vxUnit);
+			float yMultiplier = sin(-vyUnit);
+			if (amount > 1) {
+
+				float newRangeX = cos(-vxUnit + 0.5f) - cos(-vxUnit - 0.5f);
+				xMultiplier = (i * newRangeX) / (float)(amount - 1) + cos(-vxUnit -0.5f);
+
+				float newRangeY = sin(-vyUnit + 0.5f) - sin(-vyUnit - 0.5f);
+				yMultiplier = (i * newRangeY) / (float)(amount - 1) + sin(-vyUnit - 0.5f);
+
+			}
+
+			vecAsteroids.push_back({ {xMultiplier * (10 + nAsteroidSize * 2) + player.position.x,
+								  yMultiplier * (10 + nAsteroidSize * 2) + player.position.y},
+				{10.0f * vyUnit, 10.0f * vxUnit},
+				0.0f, vecModelAsteroid,
+				olc::YELLOW });
 		}
 	}
 
@@ -727,7 +735,7 @@ public:
 		// map needs compare function. vf2d does not have a compare function.
 		// Therefore do not use wrap
 
-		// The indices corespond to eachother in these lists (key, value)
+		// The indices corespond to eachother in these lists (key, value). wtf?. 
 		
 		int vertCount = obj.vWorldVerticies.size();
 
