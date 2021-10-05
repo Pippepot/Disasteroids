@@ -1,6 +1,5 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
-#include "Entity.h"
 #include "SpaceObject.h"
 #include "Laser.h"
 using namespace std;
@@ -17,7 +16,7 @@ public:
 	}
 
 private:
-	const int nAsteroidSize = 8;
+	const int nAsteroidSize = 16;
 	const float nAsteroidBreakMass = 8.0f;
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
@@ -83,7 +82,7 @@ public:
 		//vecAsteroids.push_back({ {300, 300}, {-20.0f, 60.0f}, 1.1f, vecModelAsteroid, olc::YELLOW});
 		//vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenHeight() * 0.1f}, {5.0f, -25.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		player = SpaceObject(olc::vf2d(ScreenWidth() * 0.5f, ScreenHeight() * 0.5f),
-			olc::vf2d(0, -10),
+			olc::vf2d(-34, 12),
 			0.0f,
 			{
 			{ 0.0f, -5.5f },
@@ -93,7 +92,7 @@ public:
 			},
 			olc::WHITE);
 		
-		SpawnAsteroids(3);
+		SpawnAsteroids(4);
 		nScore = 0;
 	}
 
@@ -256,30 +255,52 @@ public:
 
 	// TODO: Fix. spawn in semicircle around player
 	void SpawnAsteroids(int amount) {
+		
+		float radius = 10 * amount + nAsteroidSize * 2;
+
+		float fLength = player.velocity.mag();
+
+		float vxUnit = player.velocity.x / fLength;
+		float vyUnit = player.velocity.y / fLength;
+
+		float angleOffset = acos(vxUnit) - 3.14f * 0.5f;
+		if (vyUnit > 0)
+			angleOffset = 3.14f - angleOffset;
+
 		for (int i = 0; i < amount; i++)
 		{
-			float fLength = player.velocity.mag();
+			float angle = 0;
+			if (amount > 1)
+				angle = (i / ((float)amount - 1.0f)) * 3.14f;
 
-			float vxUnit = player.velocity.x / fLength;
-			float vyUnit = player.velocity.y / fLength;
+			angle -= angleOffset;
 
-			float xMultiplier = cos(-vxUnit);
-			float yMultiplier = sin(-vyUnit);
-			if (amount > 1) {
+			float xPos = player.position.x + cos(angle) * radius;
+			float yPos = player.position.y + sin(angle) * radius;
 
-				float newRangeX = cos(-vxUnit + 0.5f) - cos(-vxUnit - 0.5f);
-				xMultiplier = (i * newRangeX) / (float)(amount - 1) + cos(-vxUnit -0.5f);
+			vecAsteroids.push_back({ {xPos,
+					yPos},
+					{10.0f * vyUnit, 10.0f * vxUnit},
+					0.0f, vecModelAsteroid,
+					olc::YELLOW });
 
-				float newRangeY = sin(-vyUnit + 0.5f) - sin(-vyUnit - 0.5f);
-				yMultiplier = (i * newRangeY) / (float)(amount - 1) + sin(-vyUnit - 0.5f);
+		//	float xMultiplier = cos(-vxUnit);
+		//	float yMultiplier = sin(-vyUnit);
+		//	if (amount > 1) {
 
-			}
+		//		float newRangeX = cos(-vxUnit + 0.5f) - cos(-vxUnit - 0.5f);
+		//		xMultiplier = (i * newRangeX) / (float)(amount - 1) + cos(-vxUnit -0.5f);
 
-			vecAsteroids.push_back({ {xMultiplier * (10 + nAsteroidSize * 2) + player.position.x,
-								  yMultiplier * (10 + nAsteroidSize * 2) + player.position.y},
-				{10.0f * vyUnit, 10.0f * vxUnit},
-				0.0f, vecModelAsteroid,
-				olc::YELLOW });
+		//		float newRangeY = sin(-vyUnit + 0.5f) - sin(-vyUnit - 0.5f);
+		//		yMultiplier = (i * newRangeY) / (float)(amount - 1) + sin(-vyUnit - 0.5f);
+
+		//	}
+
+		//	vecAsteroids.push_back({ {xMultiplier * (10 + nAsteroidSize * 2) + player.position.x,
+		//						  yMultiplier * (10 + nAsteroidSize * 2) + player.position.y},
+		//		{10.0f * vyUnit, 10.0f * vxUnit},
+		//		0.0f, vecModelAsteroid,
+		//		olc::YELLOW });
 		}
 	}
 
