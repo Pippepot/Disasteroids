@@ -18,6 +18,7 @@ public:
 private:
 	const int nAsteroidSize = 16;
 	const float nAsteroidBreakMass = 8.0f;
+	int level;
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
 	SpaceObject player;
@@ -82,7 +83,7 @@ public:
 		//vecAsteroids.push_back({ {300, 300}, {-20.0f, 60.0f}, 1.1f, vecModelAsteroid, olc::YELLOW});
 		//vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenHeight() * 0.1f}, {5.0f, -25.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		player = SpaceObject(olc::vf2d(ScreenWidth() * 0.5f, ScreenHeight() * 0.5f),
-			olc::vf2d(-34, 12),
+			olc::vf2d(0, -40),
 			0.0f,
 			{
 			{ 0.0f, -5.5f },
@@ -92,8 +93,9 @@ public:
 			},
 			olc::WHITE);
 		
-		SpawnAsteroids(4);
+		SpawnAsteroids(1);
 		nScore = 0;
+		level = 1;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
@@ -158,6 +160,7 @@ public:
 					return;
 				}
 
+				nScore += vecAsteroids[m].mass;
 				vecAsteroids[m].Kill();	
 			}
 
@@ -238,18 +241,20 @@ public:
 	void CheckWinCondition()
 	{
 		// Level Clear
-		if (vecAsteroids.empty())
+		if (find_if(vecAsteroids.begin(), vecAsteroids.end(), [&](SpaceObject o) { return (o.mass > nAsteroidBreakMass); }) == vecAsteroids.end())
 		{
-			nScore += 1000; // Large score for level progression
+			if (vecAsteroids.size() > 0) {
+				nScore += vecAsteroids[0].mass;
+				vecAsteroids[0].Kill();
+				return;
+			}
+
 			vecAsteroids.clear();
 			vecLasers.clear();
 
-			// Add two new asteroids, but in a place where the player is not, we'll simply
-			// add them 90 degrees left and right to the player, their coordinates will
-			// be wrapped by th enext asteroid update
-			float fLength = player.velocity.mag();
+			SpawnAsteroids(min(level, 4));
 
-			SpawnAsteroids(2);
+			level++;
 		}
 	}
 
@@ -280,27 +285,9 @@ public:
 
 			vecAsteroids.push_back({ {xPos,
 					yPos},
-					{10.0f * vyUnit, 10.0f * vxUnit},
+					{40.0f * vyUnit * level, 40.0f * vxUnit * level},
 					0.0f, vecModelAsteroid,
 					olc::YELLOW });
-
-		//	float xMultiplier = cos(-vxUnit);
-		//	float yMultiplier = sin(-vyUnit);
-		//	if (amount > 1) {
-
-		//		float newRangeX = cos(-vxUnit + 0.5f) - cos(-vxUnit - 0.5f);
-		//		xMultiplier = (i * newRangeX) / (float)(amount - 1) + cos(-vxUnit -0.5f);
-
-		//		float newRangeY = sin(-vyUnit + 0.5f) - sin(-vyUnit - 0.5f);
-		//		yMultiplier = (i * newRangeY) / (float)(amount - 1) + sin(-vyUnit - 0.5f);
-
-		//	}
-
-		//	vecAsteroids.push_back({ {xMultiplier * (10 + nAsteroidSize * 2) + player.position.x,
-		//						  yMultiplier * (10 + nAsteroidSize * 2) + player.position.y},
-		//		{10.0f * vyUnit, 10.0f * vxUnit},
-		//		0.0f, vecModelAsteroid,
-		//		olc::YELLOW });
 		}
 	}
 
@@ -832,10 +819,12 @@ public:
 
 	void DrawWireFrameModel(const vector<olc::vf2d>& vecModelCoordinates, olc::vf2d pos, float r = 0.0f, float s = 1.0f, olc::Pixel p = olc::WHITE)
 	{
-
 		// Create translated model vector of coordinate pairs
-		vector<olc::vf2d> vecTransformedCoordinates;
 		int verts = vecModelCoordinates.size();
+		if (verts == 0)
+			return;
+
+		vector<olc::vf2d> vecTransformedCoordinates;
 		vecTransformedCoordinates.resize(verts);
 
 		// Rotate
