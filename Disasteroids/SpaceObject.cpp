@@ -144,9 +144,6 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 		poly1->velocity.y = ty * dpTan1 + ny * m1;
 		poly2->velocity.x = tx * dpTan2 + nx * m2;
 		poly2->velocity.y = ty * dpTan2 + ny * m2;
-
-		if (velocity.mag() > 20)
-			printf("oof");
 	}
 
 	// Can't overlap if static collision is resolved

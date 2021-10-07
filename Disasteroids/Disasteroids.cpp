@@ -83,8 +83,6 @@ public:
 		vecAsteroids.clear();
 		vecLasers.clear();
 
-		//vecAsteroids.push_back({ {300, 300}, {-20.0f, 60.0f}, 1.1f, vecModelAsteroid, olc::YELLOW});
-		//vecAsteroids.push_back({ {ScreenWidth() * 0.5f, ScreenHeight() * 0.1f}, {5.0f, -25.0f}, 0.0f, vecModelAsteroid, olc::YELLOW });
 		player = SpaceObject(olc::vf2d(ScreenWidth() * 0.5f, ScreenHeight() * 0.5f),
 			olc::vf2d(0, -40),
 			0.0f,
@@ -96,10 +94,10 @@ public:
 			},
 			olc::WHITE);
 		
-		SpawnAsteroids(1);
-		nScore = 0;
 		level = 1;
+		nScore = 0;
 
+		SpawnAsteroids(level);
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
@@ -119,8 +117,11 @@ public:
 			player.angle -= 4.0f * fElapsedTime;
 
 		// Thrust / Acceleration
-		if (GetKey(olc::UP).bHeld || GetKey(olc::W).bHeld)
-			player.velocity += olc::vf2d(sin(player.angle), -cos(player.angle)) * 20.0 * fElapsedTime;
+		if (GetKey(olc::UP).bHeld || GetKey(olc::W).bHeld) {
+			olc::vf2d direction = olc::vf2d(sin(player.angle), -cos(player.angle)) * 20.0 * fElapsedTime;
+			vecParticles.push_back({ player.position, {player.position - direction.norm() + olc::vf2d(rand(), rand()).norm()}, (float)(rand() % 30 + 1) * 0.1f, 10, olc::BLUE });
+			player.velocity += direction;
+		}
 
 		// Shoot laser
 		if (GetKey(olc::SPACE).bPressed)
@@ -217,6 +218,7 @@ public:
 		// Remove particles
 		if (vecParticles.size() > 0)
 		{
+			// Only removes 1 element. FIX
 			auto i = remove_if(vecParticles.begin(), vecParticles.end(), [&](Particle o) { return (o.isDead()); });
 			if (i != vecParticles.end())
 				vecParticles.erase(i);
@@ -306,7 +308,7 @@ public:
 
 			vecAsteroids.push_back({ {xPos,
 					yPos},
-					{40.0f * vyUnit * level, 40.0f * vxUnit * level},
+					{40.0f * vyUnit, 40.0f * vxUnit},
 					0.0f, vecModelAsteroid,
 					olc::YELLOW });
 		}
