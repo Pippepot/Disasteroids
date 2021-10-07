@@ -1,6 +1,7 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
 #include "SpaceObject.h"
+#include "Particle.h"
 #include "Laser.h"
 using namespace std;
 
@@ -18,9 +19,11 @@ public:
 private:
 	const int nAsteroidSize = 16;
 	const float nAsteroidBreakMass = 8.0f;
+	const float nLevelSwitchDelay = 5.0f;
 	int level;
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
+	vector<Particle> vecParticles;
 	SpaceObject player;
 	int nScore;
 
@@ -96,12 +99,15 @@ public:
 		SpawnAsteroids(1);
 		nScore = 0;
 		level = 1;
+
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
-		if (player.isDead())
+		if (player.isDead()) {
+			vecParticles.push_back({ player.position, player.vWorldVerticies, 3, 10, player.color });
 			ResetGame();
+		}
 
 		Clear(olc::BLACK);
 
@@ -134,7 +140,6 @@ public:
 		player.Update(fElapsedTime);
 		player.CalculateVerticiesWorldSpace();
 		ProcessVerticiesForCollision(player);
-		// Wrap spaceship coordiantes
 		WrapCoordinates(player.position, player.position);
 
 		// Update asteroids position and velocity
@@ -156,7 +161,7 @@ public:
 			if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
 				// Hit a big asteroid. Game over
 				if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
-					ResetGame();
+					player.Kill();
 					return;
 				}
 
@@ -191,10 +196,10 @@ public:
 		//}
 
 		for (auto& l : vecLasers)
-		{
 			l.Update(fElapsedTime);
-			l.color.a = max((l.timeLeft * 255 / l.maxTime), 0);
-		}
+
+		for (auto& p : vecParticles)
+			p.Update(fElapsedTime);
 
 		DrawEntities();
 	}
@@ -209,12 +214,24 @@ public:
 				vecLasers.erase(i);
 		}
 
+		// Remove particles
+		if (vecParticles.size() > 0)
+		{
+			auto i = remove_if(vecParticles.begin(), vecParticles.end(), [&](Particle o) { return (o.isDead()); });
+			if (i != vecParticles.end())
+				vecParticles.erase(i);
+		}
+
 		// Remove asteroids
 		if (vecAsteroids.size() > 0)
 		{
-			auto i = remove_if(vecAsteroids.begin(), vecAsteroids.end(), [&](SpaceObject o) { return (o.isDead()); });
-			if (i != vecAsteroids.end())
+			auto i = find_if(vecAsteroids.begin(), vecAsteroids.end(), [&](SpaceObject o) { return (o.isDead()); });
+			if (i != vecAsteroids.end()) {
+				SpaceObject a = vecAsteroids[i - vecAsteroids.begin()];
+				vecParticles.push_back({ a.position, a.vWorldVerticies, 3, 10, a.color });
 				vecAsteroids.erase(i);
+			}
+
 		}
 
 	}
@@ -222,14 +239,17 @@ public:
 	void DrawEntities()
 	{
 		// Draw asteroids
-		for (auto& a : vecAsteroids) {
-
+		for (auto& a : vecAsteroids)
 			DrawWireFrameModel(a.vWorldVerticies, olc::vf2d(), 0, 1, a.color);
-		}
 	
 		// Draw lasers
 		for (auto& l : vecLasers)
 			DrawLine(l.position, l.endPosition, l.color);
+
+		// Draw lasers
+		for (auto& p : vecParticles)
+			for (auto& i : p.subParticles)
+				Draw(i.x, i.y, p.color);
 
 		// Draw player
 		DrawWireFrameModel(player.vRawVerticies, player.position, player.angle, 1, player.color);
@@ -243,6 +263,7 @@ public:
 		// Level Clear
 		if (find_if(vecAsteroids.begin(), vecAsteroids.end(), [&](SpaceObject o) { return (o.mass > nAsteroidBreakMass); }) == vecAsteroids.end())
 		{
+			// TODO: Make timer
 			if (vecAsteroids.size() > 0) {
 				nScore += vecAsteroids[0].mass;
 				vecAsteroids[0].Kill();
@@ -252,9 +273,9 @@ public:
 			vecAsteroids.clear();
 			vecLasers.clear();
 
-			SpawnAsteroids(min(level, 4));
-
 			level++;
+			
+			SpawnAsteroids(min(level, 4));
 		}
 	}
 
@@ -443,12 +464,12 @@ public:
 				v -= averageVertexPosition2;
 			}
 
-			olc::vf2d newVelocity1 = 0.1f * (averageVertexPosition1 - averageVertexPosition2) + a.velocity;
-			olc::vf2d newVelocity2 = 0.1f * (averageVertexPosition2 - averageVertexPosition1) + a.velocity;
+			olc::vf2d newVelocity1 = 0.5f * (averageVertexPosition1 - averageVertexPosition2) + a.velocity;
+			olc::vf2d newVelocity2 = 0.5f * (averageVertexPosition2 - averageVertexPosition1) + a.velocity;
 
 			SpaceObject newAsteroid = { averageVertexPosition2, newVelocity2, 0, vVertices2, olc::YELLOW };
 
-			if (newAsteroid.mass < nAsteroidBreakMass)
+			if (newAsteroid.mass <= nAsteroidBreakMass)
 				newAsteroid.color = olc::GREY;
 
 			newAsteroids.push_back(newAsteroid);
@@ -460,7 +481,7 @@ public:
 			a.vRawVerticies = vVertices1;
 			a.CalculateMass();
 
-			if (a.mass < nAsteroidBreakMass)
+			if (a.mass <= nAsteroidBreakMass)
 				a.color = olc::GREY;
 		}
 
@@ -936,7 +957,7 @@ public:
 int main()
 {
 	Disasteroids game;
-	if (game.Construct(100*2, 100*2, 4, 4))
+	if (game.Construct(240, 240, 4, 4))
 		game.Start();
 	return 0;
 }
