@@ -17,7 +17,7 @@ public:
 	}
 
 private:
-	const int nAsteroidSize = 16;
+	const int nAsteroidSize = 4;
 	const float nAsteroidBreakMass = 8.0f;
 	const float nLevelSwitchDelay = 5.0f;
 	int level;
@@ -29,20 +29,15 @@ private:
 
 	vector<olc::vf2d> vecModelAsteroid;
 
-	bool IsPointInsideCircle(olc::vf2d c, float radius, olc::vf2d p)
-	{
-		return (p - c).mag() < radius;
-	}
-
 	// Implements "wrap around" for various in-game sytems
 	void WrapCoordinates(float ix, float iy, float& ox, float& oy)
 	{
 		ox = ix;
 		oy = iy;
 		if (ix < 0.0f)	ox = ix + (float)ScreenWidth();
-		if (ix >= (float)ScreenWidth())	ox = ix - (float)ScreenWidth();
+		else if (ix >= (float)ScreenWidth())	ox = ix - (float)ScreenWidth();
 		if (iy < 0.0f)	oy = iy + (float)ScreenHeight();
-		if (iy >= (float)ScreenHeight()) oy = iy - (float)ScreenHeight();
+		else if (iy >= (float)ScreenHeight()) oy = iy - (float)ScreenHeight();
 	}
 
 	void WrapCoordinates(olc::vf2d i, olc::vf2d& o)
@@ -52,8 +47,8 @@ private:
 
 	virtual bool Draw(int32_t x, int32_t y, olc::Pixel p = olc::WHITE)
 	{
-		float ox = x;
-		float oy = y;
+		float ox;
+		float oy;
 		WrapCoordinates((float)x, (float)y, ox, oy);
 		return PixelGameEngine::Draw(ox, oy, p);
 	}
@@ -61,7 +56,14 @@ private:
 public:
 	bool OnUserCreate() override
 	{
+		CreateAsteroidModel();
 
+		ResetGame();
+
+		return true;
+	}
+
+	void CreateAsteroidModel() {
 		int verts = 26;
 		for (int i = 0; i < verts; i++)
 		{
@@ -72,10 +74,6 @@ public:
 				noise * cosf(((float)i / (float)verts) * 6.28318f) * nAsteroidSize
 				});
 		}
-
-		ResetGame();
-
-		return true;
 	}
 
 	void ResetGame()
@@ -102,13 +100,24 @@ public:
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
+		Clear(olc::BLACK);
+
+		// Player dead. Reset
 		if (player.isDead()) {
 			vecParticles.push_back({ player.position, player.vWorldVerticies, 3, 10, player.color });
 			ResetGame();
 		}
 
-		Clear(olc::BLACK);
+		UpdatePlayerControls(fElapsedTime);
 
+		UpdateEntities(fElapsedTime);
+
+		CheckWinCondition();
+
+		return true;
+	}
+
+	void UpdatePlayerControls(float fElapsedTime) {
 
 		// Steer player
 		if (GetKey(olc::RIGHT).bHeld || GetKey(olc::D).bHeld)
@@ -126,12 +135,6 @@ public:
 		// Shoot laser
 		if (GetKey(olc::SPACE).bPressed)
 			ShootLaser();
-
-		UpdateEntities(fElapsedTime);
-
-		CheckWinCondition();
-
-		return true;
 	}
 
 	void UpdateEntities(float fElapsedTime)
@@ -147,35 +150,40 @@ public:
 		for (auto& a : vecAsteroids)
 		{
 			a.Update(fElapsedTime * 0.2f);
-			a.angle += 0.1f * fElapsedTime;
+			//a.angle += 0.1f * fElapsedTime;
 			WrapCoordinates(a.position, a.position);
 			a.CalculateVerticiesWorldSpace();
+			//ProcessVerticiesForCollision(a);
+		}
+
+		for (auto& a : vecAsteroids)
+		{
 			ProcessVerticiesForCollision(a);
 		}
 
-		std::vector<SpaceObject*> collidingObjects;
+		//std::vector<SpaceObject*> collidingObjects;
 
 		// Check for overlap
-		for (int m = 0; m < vecAsteroids.size(); m++)
-		{
+		//for (int m = 0; m < vecAsteroids.size(); m++)
+		//{
 
-			if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
-				// Hit a big asteroid. Game over
-				if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
-					player.Kill();
-					return;
-				}
+		//	if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
+		//		// Hit a big asteroid. Game over
+		//		if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
+		//			player.Kill();
+		//			return;
+		//		}
 
-				nScore += vecAsteroids[m].mass;
-				vecAsteroids[m].Kill();	
-			}
+		//		nScore += vecAsteroids[m].mass;
+		//		vecAsteroids[m].Kill();	
+		//	}
 
-			for (int n = m + 1; n < vecAsteroids.size(); n++)
-			{
-				if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n]))
-					collidingObjects.push_back(&vecAsteroids[n]);
-			}
-		}
+		//	for (int n = m + 1; n < vecAsteroids.size(); n++)
+		//	{
+		//		if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n]))
+		//			collidingObjects.push_back(&vecAsteroids[n]);
+		//	}
+		//}
 
 		// TODO Fix multiple collisions. Pinching
 		
@@ -208,32 +216,27 @@ public:
 	void DestroyDeadEntities()
 	{
 		// Remove lasers with no time left
-		if (vecLasers.size() > 0)
+		for (int i = vecLasers.size() - 1; i >= 0; i--)
 		{
-			auto i = remove_if(vecLasers.begin(), vecLasers.end(), [&](Laser o) { return (o.isDead()); });
-			if (i != vecLasers.end())
-				vecLasers.erase(i);
+			if (vecLasers[i].isDead())
+				vecLasers.erase(vecLasers.begin() + i);
 		}
 
 		// Remove particles
-		if (vecParticles.size() > 0)
+		for (int i = vecParticles.size() - 1; i >= 0; i--)
 		{
-			// Only removes 1 element. FIX
-			auto i = remove_if(vecParticles.begin(), vecParticles.end(), [&](Particle o) { return (o.isDead()); });
-			if (i != vecParticles.end())
-				vecParticles.erase(i);
+			if (vecParticles[i].isDead())
+				vecParticles.erase(vecParticles.begin() + i);
 		}
 
 		// Remove asteroids
-		if (vecAsteroids.size() > 0)
+		for (int i = vecAsteroids.size() - 1; i >= 0; i--)
 		{
-			auto i = find_if(vecAsteroids.begin(), vecAsteroids.end(), [&](SpaceObject o) { return (o.isDead()); });
-			if (i != vecAsteroids.end()) {
-				SpaceObject a = vecAsteroids[i - vecAsteroids.begin()];
+			if (vecAsteroids[i].isDead()) {
+				SpaceObject a = vecAsteroids[i];
 				vecParticles.push_back({ a.position, a.vWorldVerticies, 3, 10, a.color });
-				vecAsteroids.erase(i);
+				vecAsteroids.erase(vecAsteroids.begin() + i);
 			}
-
 		}
 
 	}
@@ -262,6 +265,7 @@ public:
 
 	void CheckWinCondition()
 	{
+		return;
 		// Level Clear
 		if (find_if(vecAsteroids.begin(), vecAsteroids.end(), [&](SpaceObject o) { return (o.mass > nAsteroidBreakMass); }) == vecAsteroids.end())
 		{
@@ -284,6 +288,7 @@ public:
 	// TODO: Fix. spawn in semicircle around player
 	void SpawnAsteroids(int amount) {
 		
+		amount = 50;
 		float radius = 10 * amount + nAsteroidSize * 2;
 
 		float fLength = player.velocity.mag();
@@ -318,8 +323,6 @@ public:
 	{
 		vector<SpaceObject> newAsteroids;
 
-		// TODO: Implement new processed verticies way of doing things man
-
 		olc::vf2d vEndPos;
 		CalculateLineEndPosition(player.angle, player.position, vEndPos);
 
@@ -342,16 +345,16 @@ public:
 		// Translate transformed verticies to raw verticies
 		//  
 
-		// For every asteroid
+		// For every asteroid O(N)
 		for (auto& a : vecAsteroids)
 		{
-			// TODO: Doesn't work when wrapping. oof
 			// For every list of processed verticies
 			olc::vf2d firstIntersection;
 			olc::vf2d secondIntersection;
 			int firstIntersectionIndex = -1;
 			int secondIntersectionIndex = -1;
 
+			// O(N)
 			for (int listIndex = 0; listIndex < a.vProcessedVerticies.size(); listIndex++)
 			{
 				if (firstIntersectionIndex != -1)
@@ -481,6 +484,7 @@ public:
 			a.angle = 0;
 			a.velocity = newVelocity1;
 			a.vRawVerticies = vVertices1;
+			a.vWorldVerticies.resize(vVertices1.size());
 			a.CalculateMass();
 
 			if (a.mass <= nAsteroidBreakMass)
@@ -762,11 +766,6 @@ public:
 
 	void ProcessVerticiesForCollision(SpaceObject& obj)
 	{
-		// map needs compare function. vf2d does not have a compare function.
-		// Therefore do not use wrap
-
-		// The indices corespond to eachother in these lists (key, value). wtf?. 
-		
 		int vertCount = obj.vWorldVerticies.size();
 
 		if (vertCount < 2)
@@ -781,22 +780,28 @@ public:
 		olc::vf2d nextVert;
 		olc::vf2d currentWrap;
 
-		for (int i = 1; i < vertCount; i++)
+		for (int i = 1; i < vertCount + 1; i++)
 		{
 			// Assign next and current vertex
 			nextVert = obj.vWorldVerticies[(i + 1) % vertCount];
-			currentVert = obj.vWorldVerticies[i];
+			currentVert = obj.vWorldVerticies[i % vertCount];
 			
 			// Check Wrap
 			WrapCoordinates(currentVert, currentWrap);
 			currentWrap = currentWrap - currentVert;
 
 			// If current or next or previous with wrap is not added to map, add it
-			auto key = find(obj.vWorldPositions.begin(), obj.vWorldPositions.end(), currentWrap + obj.position);
-			int index = std::distance(obj.vWorldPositions.begin(), key);
+			int index = obj.vWorldPositions.size();
+			for (int j = 0; j < obj.vWorldPositions.size(); j++)
+			{
+				if (currentWrap + obj.position == obj.vWorldPositions[j]) {
+					index = j;
+					break;
+				}
+			}
 
 			// Not found
-			if (key == obj.vWorldPositions.end()) {
+			if (index == obj.vWorldPositions.size()) {
 
 				std::vector<olc::vf2d> verts;
 				verts.push_back(lastVert + currentWrap);
@@ -806,28 +811,33 @@ public:
 				obj.vWorldPositions.push_back(currentWrap + obj.position);
 				obj.vProcessedVerticies.push_back(verts);
 				obj.vProcessedVerticiesRawIndicies.push_back(i-1);
+
+				lastVert = currentVert;
+				continue;
 			}
-			else
-			{
-				// Found. Add last current and last vert if not already found in vector
-				auto notFound = [](vector<olc::vf2d> v, olc::vf2d vert)
-				{
-					return !std::count(v.begin(), v.end(), vert);
-				};
 
-				auto v = obj.vProcessedVerticies[index];
+			// Found. Add last current and last vert if not already found in vector
 
-				if (notFound(v, lastVert + currentWrap))
-					v.push_back(lastVert + currentWrap);
+			// Push last and next vertex if not already in the vector
+			bool foundLast = false;
+			bool foundNext = false;
+			int size = obj.vProcessedVerticies[index].size();
 
-				if (notFound(v, currentVert + currentWrap))
-					v.push_back(currentVert + currentWrap);
+			//for (int j = 0; j < size; j++) {
+			//	if (obj.vProcessedVerticies[index][j] == (lastVert + currentWrap)) {
+			//		foundLast = true;
+			//	}
+			//	if (obj.vProcessedVerticies[index][j] == (nextVert + currentWrap)) {
+			//		foundNext = true;
+			//	}
+			//}
 
-				if (notFound(v, nextVert + currentWrap))
-					v.push_back(nextVert + currentWrap);
+			//if (!foundLast)
+			//	obj.vProcessedVerticies[index].push_back(nextVert + currentWrap);
 
-				obj.vProcessedVerticies[index] = v;
-			}
+			//if (!foundNext)
+			//	obj.vProcessedVerticies[index].push_back(nextVert + currentWrap);
+
 
 			// Assign last vertex after calculations
 			lastVert = currentVert;

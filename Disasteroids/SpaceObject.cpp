@@ -7,6 +7,7 @@ SpaceObject::SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<ol
 	velocity = vel;
 	angle = ang;
 	vRawVerticies = verts;
+	vWorldVerticies.resize(verts.size());
 	bDead = false;
 	CalculateMass();
 	color = col;
@@ -14,7 +15,7 @@ SpaceObject::SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<ol
 
 void SpaceObject::Update(float fElapsedTime)
 {
-	position += velocity * fElapsedTime;
+	//position += velocity * fElapsedTime;
 }
 
 void SpaceObject::Kill()
@@ -35,24 +36,19 @@ void SpaceObject::CalculateMass()
 
 void SpaceObject::CalculateVerticiesWorldSpace()
 {
-	vWorldVerticies.clear();
 
-	for (auto& vert : vRawVerticies)
+	float cosAng = cosf(angle);
+	float sinAng = sinf(angle);
+
+	for (int i = 0; i < vRawVerticies.size(); i++)
 	{
-		olc::vf2d currentVert;
-		
-		TransformVertexWorldSpace(vert, currentVert);
+		olc::vf2d currentVert = {
+			vRawVerticies[i].x * cosAng - vRawVerticies[i].y * sinAng + position.x,
+			vRawVerticies[i].x * sinAng + vRawVerticies[i].y * cosAng + position.y
+		};
 
-		vWorldVerticies.push_back(currentVert);
+		vWorldVerticies[i] = currentVert;
 	}
-}
-
-
-void SpaceObject::TransformVertexWorldSpace(olc::vf2d i, olc::vf2d &o)
-{
-	o.x = i.x * cosf(angle) - i.y * sinf(angle);
-	o.y = i.x * sinf(angle) + i.y * cosf(angle);
-	o += position;
 }
 
 
