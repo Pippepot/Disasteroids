@@ -15,7 +15,7 @@ SpaceObject::SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<ol
 
 void SpaceObject::Update(float fElapsedTime)
 {
-	//position += velocity * fElapsedTime;
+	position += velocity * fElapsedTime;
 }
 
 void SpaceObject::Kill()

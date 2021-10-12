@@ -64,7 +64,7 @@ public:
 	}
 
 	void CreateAsteroidModel() {
-		int verts = 26;
+		int verts = 8;
 		for (int i = 0; i < verts; i++)
 		{
 			// Counter clockwise
@@ -161,29 +161,29 @@ public:
 			ProcessVerticiesForCollision(a);
 		}
 
+		// Removed if statement that  adds to this vector. Insert to use again
 		//std::vector<SpaceObject*> collidingObjects;
 
 		// Check for overlap
-		//for (int m = 0; m < vecAsteroids.size(); m++)
-		//{
+		for (int m = 0; m < vecAsteroids.size(); m++)
+		{
 
-		//	if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
-		//		// Hit a big asteroid. Game over
-		//		if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
-		//			player.Kill();
-		//			return;
-		//		}
+			if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
+				// Hit a big asteroid. Game over
+				if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
+					player.Kill();
+					return;
+				}
 
-		//		nScore += vecAsteroids[m].mass;
-		//		vecAsteroids[m].Kill();	
-		//	}
+				nScore += vecAsteroids[m].mass;
+				vecAsteroids[m].Kill();	
+			}
 
-		//	for (int n = m + 1; n < vecAsteroids.size(); n++)
-		//	{
-		//		if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n]))
-		//			collidingObjects.push_back(&vecAsteroids[n]);
-		//	}
-		//}
+			for (int n = m + 1; n < vecAsteroids.size(); n++)
+			{
+				vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n]);
+			}
+		}
 
 		// TODO Fix multiple collisions. Pinching
 		
@@ -310,6 +310,9 @@ public:
 
 			float xPos = player.position.x + cos(angle) * radius;
 			float yPos = player.position.y + sin(angle) * radius;
+
+			//float xPos = 20;
+			//float yPos = 20;
 
 			vecAsteroids.push_back({ {xPos,
 					yPos},
@@ -819,24 +822,33 @@ public:
 			// Found. Add last current and last vert if not already found in vector
 
 			// Push last and next vertex if not already in the vector
-			bool foundLast = false;
+			bool lastFound = true;
 			bool foundNext = false;
 			int size = obj.vProcessedVerticies[index].size();
 
-			//for (int j = 0; j < size; j++) {
-			//	if (obj.vProcessedVerticies[index][j] == (lastVert + currentWrap)) {
-			//		foundLast = true;
-			//	}
-			//	if (obj.vProcessedVerticies[index][j] == (nextVert + currentWrap)) {
-			//		foundNext = true;
-			//	}
-			//}
+			if (i >= vertCount - 1) {
+				for (int j = 0; j < size; j++) {
+					if (obj.vProcessedVerticies[index][j] == (nextVert + currentWrap)) {
+						foundNext = true;
+						break;
+					}
+				}
+				if (i == vertCount) {
+					lastFound = false;
+					for (int j = 0; j < size; j++) {
+						if (obj.vProcessedVerticies[index][j] == (lastVert + currentWrap)) {
+							lastFound = true;
+							break;
+						}
+					}
+				}
+			}
 
-			//if (!foundLast)
-			//	obj.vProcessedVerticies[index].push_back(nextVert + currentWrap);
+			if (!lastFound)
+				obj.vProcessedVerticies[index].push_back(nextVert + currentWrap);
 
-			//if (!foundNext)
-			//	obj.vProcessedVerticies[index].push_back(nextVert + currentWrap);
+			if (!foundNext)
+				obj.vProcessedVerticies[index].push_back(nextVert + currentWrap);
 
 
 			// Assign last vertex after calculations
