@@ -7,10 +7,19 @@ SpaceObject::SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<ol
 	velocity = vel;
 	angle = ang;
 	vRawVerticies = verts;
-	vWorldVerticies.resize(verts.size());
+	int vertSize = verts.size();
+	vWorldVerticies.resize(vertSize);
 	bDead = false;
 	CalculateMass();
 	color = col;
+
+	boundingCircleRadius = 0;
+
+	for (int i = 0; i < vertSize; i++)
+	{
+		boundingCircleRadius = std::max(boundingCircleRadius, vRawVerticies[i].mag2());
+	}
+	boundingCircleRadius = std::sqrt(boundingCircleRadius);
 }
 
 void SpaceObject::Update(float fElapsedTime)
@@ -57,6 +66,25 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 {
 	SpaceObject* poly1 = this;
 	SpaceObject* poly2 = &other;
+
+	// Broad phase
+	bool closeEnough = false;
+	for (int i = 0; i < poly1->vWorldPositions.size(); i++)
+	{
+		for (int j = 0; j < poly2->vWorldPositions.size(); j++)
+		{
+			if ((poly1->vWorldPositions[i] - poly2->vWorldPositions[j]).mag() < poly1->boundingCircleRadius + poly2->boundingCircleRadius) {
+				closeEnough = true;
+				break;
+			}
+			
+			if (closeEnough)
+				break;
+		}
+	}
+
+	if (!closeEnough)
+		return false;
 
 	bool hasCollided = false;
 

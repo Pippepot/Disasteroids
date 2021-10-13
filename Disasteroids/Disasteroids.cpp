@@ -788,7 +788,7 @@ public:
 			// Assign next and current vertex
 			nextVert = obj.vWorldVerticies[(i + 1) % vertCount];
 			currentVert = obj.vWorldVerticies[i % vertCount];
-			
+
 			// Check Wrap
 			WrapCoordinates(currentVert, currentWrap);
 			currentWrap = currentWrap - currentVert;
@@ -806,14 +806,12 @@ public:
 			// Not found
 			if (index == obj.vWorldPositions.size()) {
 
-				std::vector<olc::vf2d> verts;
-				verts.push_back(lastVert + currentWrap);
-				verts.push_back(currentVert + currentWrap);
-				verts.push_back(nextVert + currentWrap);
-
 				obj.vWorldPositions.push_back(currentWrap + obj.position);
-				obj.vProcessedVerticies.push_back(verts);
 				obj.vProcessedVerticiesRawIndicies.push_back(i-1);
+				obj.vProcessedVerticies.push_back({
+					lastVert + currentWrap,
+					currentVert + currentWrap,
+					nextVert + currentWrap });
 
 				lastVert = currentVert;
 				continue;
