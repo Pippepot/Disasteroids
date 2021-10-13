@@ -329,6 +329,9 @@ public:
 		olc::vf2d vEndPos;
 		CalculateLineEndPosition(player.angle, player.position, vEndPos);
 
+		olc::vf2d lineDirection = vEndPos - player.position;
+		lineDirection = lineDirection.norm();
+
 		// Old model. No good!
 		// 1 For every asteroid
 		// 2 Find last and current vertex
@@ -351,6 +354,22 @@ public:
 		// For every asteroid O(N)
 		for (auto& a : vecAsteroids)
 		{
+			// Broad phase
+			bool closeEnough = false;
+			for (int i = 0; i < a.vWorldPositions.size(); i++)
+			{
+				olc::vf2d asteroidPlayerLocal = a.vWorldPositions[i] - player.position;
+				// Distance from line to center of asteroid. https://en.wikipedia.org/wiki/Vector_projection#Scalar_rejection
+				float distanceToAsteroid = abs(asteroidPlayerLocal.dot(lineDirection.perp()));
+				if (distanceToAsteroid < a.boundingCircleRadius) {
+					closeEnough = true;
+					break;
+				}
+			}
+
+			if (!closeEnough)
+				continue;
+
 			// For every list of processed verticies
 			olc::vf2d firstIntersection;
 			olc::vf2d secondIntersection;
@@ -392,8 +411,6 @@ public:
 					if (vertIndex + a.vProcessedVerticiesRawIndicies[listIndex] == firstIntersectionIndex)
 						continue;
 
-					olc::vf2d lineDirection = vEndPos - player.position;
-					lineDirection = lineDirection.norm();
 					olc::vf2d vNewEndPos = firstIntersection + lineDirection * 1000;
 					olc::vf2d vNewStartPos = firstIntersection - lineDirection * 1000;
 					// Possibly do some optimization. AABB
