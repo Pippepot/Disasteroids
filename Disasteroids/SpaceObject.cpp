@@ -68,12 +68,13 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 	SpaceObject* poly2 = &other;
 
 	// Broad phase
+	float distance = poly1->boundingCircleRadius + poly2->boundingCircleRadius;
 	bool closeEnough = false;
 	for (int i = 0; i < poly1->vWorldPositions.size(); i++)
 	{
 		for (int j = 0; j < poly2->vWorldPositions.size(); j++)
 		{
-			if ((poly1->vWorldPositions[i] - poly2->vWorldPositions[j]).mag() < poly1->boundingCircleRadius + poly2->boundingCircleRadius) {
+			if ((poly1->vWorldPositions[i] - poly2->vWorldPositions[j]).mag() < distance) {
 				closeEnough = true;
 				break;
 			}

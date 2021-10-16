@@ -18,8 +18,11 @@ public:
 	}
 
 private:
-	const int nAsteroidSize = 4;
+	const int nAsteroidSize = 16;
 	const float nAsteroidBreakMass = 8.0f;
+	const float nAsteroidDisintegrateMass = 2.0f;
+	int nAsteroidCountAtLevelSwitch;
+	bool bIsSwitchingLevel;
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
 	ParticleSystem particleSystem;
@@ -65,7 +68,7 @@ public:
 	}
 
 	void CreateAsteroidModel() {
-		int verts = 8;
+		int verts = 24;
 		for (int i = 0; i < verts; i++)
 		{
 			// Counter clockwise
@@ -97,6 +100,8 @@ public:
 		nScore = 0;
 
 		SpawnAsteroids(level);
+
+		bIsSwitchingLevel = false;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
@@ -161,14 +166,9 @@ public:
 		for (auto& a : vecAsteroids)
 		{
 			a.Update(fElapsedTime * 0.2f);
-			//a.angle += 0.1f * fElapsedTime;
+			a.angle += 0.1f * fElapsedTime;
 			WrapCoordinates(a.position, a.position);
 			a.CalculateVerticiesWorldSpace();
-			//ProcessVerticiesForCollision(a);
-		}
-
-		for (auto& a : vecAsteroids)
-		{
 			ProcessVerticiesForCollision(a);
 		}
 
@@ -271,30 +271,51 @@ public:
 
 	void CheckWinCondition()
 	{
-		return;
-		// Level Clear
-		if (find_if(vecAsteroids.begin(), vecAsteroids.end(), [&](SpaceObject o) { return (o.mass > nAsteroidBreakMass); }) == vecAsteroids.end())
-		{
-			// TODO: Make timer
-			if (vecAsteroids.size() > 0) {
-				nScore += vecAsteroids[0].mass;
-				vecAsteroids[0].Kill();
-				return;
+		if (bIsSwitchingLevel) {
+
+			DelayManager::delayTypes type = DelayManager::delayTypes::levelSwitch;
+
+			// Get amount of asteroids to destroy this frame
+			float fraction = delayManager.GetCooldown(type) / delayManager.GetTotalDuration(type);
+			int asteroidsToDestroy = vecAsteroids.size() - nAsteroidCountAtLevelSwitch * fraction;
+
+			// Avoid errors
+			asteroidsToDestroy = min(asteroidsToDestroy, vecAsteroids.size());
+
+			for (int i = 0; i < asteroidsToDestroy; i++)
+			{
+				nScore += vecAsteroids[i].mass;
+				vecAsteroids[i].Kill();
 			}
+
+			if (vecAsteroids.size() > 0)
+				return;
 
 			vecAsteroids.clear();
 			vecLasers.clear();
 
 			level++;
-			
+
 			SpawnAsteroids(min(level, 4));
+
+			bIsSwitchingLevel = false;
+
+			return;
+		}
+
+
+		// Level Clear
+		if (find_if(vecAsteroids.begin(), vecAsteroids.end(), [&](SpaceObject o) { return (o.mass > nAsteroidBreakMass); }) == vecAsteroids.end())
+		{
+			delayManager.PutOnCooldown(DelayManager::delayTypes::levelSwitch);
+			nAsteroidCountAtLevelSwitch = vecAsteroids.size();
+			bIsSwitchingLevel = true;
 		}
 	}
 
 	// TODO: Fix. spawn in semicircle around player
 	void SpawnAsteroids(int amount) {
 		
-		amount = 50;
 		float radius = 10 * amount + nAsteroidSize * 2;
 
 		float fLength = player.velocity.mag();
@@ -498,10 +519,14 @@ public:
 			olc::vf2d newVelocity1 = 0.5f * (averageVertexPosition1 - averageVertexPosition2) + a.velocity;
 			olc::vf2d newVelocity2 = 0.5f * (averageVertexPosition2 - averageVertexPosition1) + a.velocity;
 
+			// TODO sometimes gray have greater mass than breakmass
 			SpaceObject newAsteroid = { averageVertexPosition2, newVelocity2, 0, vVertices2, olc::YELLOW };
 
 			if (newAsteroid.mass <= nAsteroidBreakMass)
 				newAsteroid.color = olc::GREY;
+
+			if (newAsteroid.mass <= nAsteroidDisintegrateMass)
+				newAsteroid.Kill();
 
 			newAsteroids.push_back(newAsteroid);
 
@@ -515,6 +540,9 @@ public:
 
 			if (a.mass <= nAsteroidBreakMass)
 				a.color = olc::GREY;
+
+			if (a.mass <= nAsteroidDisintegrateMass)
+				a.Kill();
 		}
 
 		vecLasers.push_back({ player.position, vEndPos, olc::BLUE, 1 });

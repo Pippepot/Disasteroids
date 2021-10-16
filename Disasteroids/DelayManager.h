@@ -8,6 +8,8 @@ public:
 	void Update(float fElapsedTime);
 	void PutOnCooldown(delayTypes type);
 	bool OnCooldown(delayTypes type);
+	float GetCooldown(delayTypes type);
+	float GetTotalDuration(delayTypes type);
 private:
 	std::array<float, 2> delays;
 	const std::array<float, 2> durations{
