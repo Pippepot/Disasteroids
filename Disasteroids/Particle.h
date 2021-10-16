@@ -4,11 +4,10 @@ class Particle :
     public Entity
 {
 public:
-    Particle(olc::vf2d pos, std::vector<olc::vf2d> verts, float duration, float force, olc::Pixel col);
+    Particle() = default;
+    Particle(olc::vf2d pos, olc::vf2d force, float duration, olc::Pixel col);
     virtual void Update(float fElapsedTime) override;
-    std::vector<olc::vf2d> subParticles;
-    int numStartParticles;
-    float forceFromOrigin;
+    olc::vf2d velocity;
     float duration;
 private:
     float timeLeft;

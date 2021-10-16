@@ -141,17 +141,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DelayManager.cpp" />
     <ClCompile Include="Disasteroids.cpp" />
     <ClCompile Include="Entity.cpp" />
     <ClCompile Include="Laser.cpp" />
     <ClCompile Include="Particle.cpp" />
+    <ClCompile Include="ParticleSystem.cpp" />
     <ClCompile Include="SpaceObject.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DelayManager.h" />
     <ClInclude Include="Entity.h" />
     <ClInclude Include="Laser.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
     <ClInclude Include="Particle.h" />
+    <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="SpaceObject.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -1,8 +1,9 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
 #include "SpaceObject.h"
-#include "Particle.h"
+#include "ParticleSystem.h"
 #include "Laser.h"
+#include "DelayManager.h"
 using namespace std;
 
 
@@ -19,12 +20,12 @@ public:
 private:
 	const int nAsteroidSize = 4;
 	const float nAsteroidBreakMass = 8.0f;
-	const float nLevelSwitchDelay = 5.0f;
-	int level;
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
-	vector<Particle> vecParticles;
+	ParticleSystem particleSystem;
+	DelayManager delayManager;
 	SpaceObject player;
+	int level;
 	int nScore;
 
 	vector<olc::vf2d> vecModelAsteroid;
@@ -104,7 +105,7 @@ public:
 
 		// Player dead. Reset
 		if (player.isDead()) {
-			vecParticles.push_back({ player.position, player.vWorldVerticies, 3, 10, player.color });
+			particleSystem.AddParticlesFromVerts(player.vWorldVerticies, player.position, 10, 3, player.color);
 			ResetGame();
 		}
 
@@ -127,9 +128,19 @@ public:
 
 		// Thrust / Acceleration
 		if (GetKey(olc::UP).bHeld || GetKey(olc::W).bHeld) {
+
 			olc::vf2d direction = olc::vf2d(sin(player.angle), -cos(player.angle)) * 20.0 * fElapsedTime;
-			vecParticles.push_back({ player.position, {player.position - direction.norm() + olc::vf2d(rand(), rand()).norm()}, (float)(rand() % 30 + 1) * 0.1f, 10, olc::BLUE });
 			player.velocity += direction;
+
+			if (!delayManager.OnCooldown(DelayManager::delayTypes::throttle)) {
+
+				for (int i = 0; i < 3; i++)
+				{
+					particleSystem.AddParticleFromVerts(player.position, player.velocity + (olc::vf2d(rand(), rand()).norm() * 0.5f - direction.norm()) * 10.0f, 1.0f, olc::DARK_BLUE);
+				}
+
+				delayManager.PutOnCooldown(DelayManager::delayTypes::throttle);
+			}
 		}
 
 		// Shoot laser
@@ -207,8 +218,9 @@ public:
 		for (auto& l : vecLasers)
 			l.Update(fElapsedTime);
 
-		for (auto& p : vecParticles)
-			p.Update(fElapsedTime);
+		particleSystem.Update(fElapsedTime);
+
+		delayManager.Update(fElapsedTime);
 
 		DrawEntities();
 	}
@@ -222,19 +234,12 @@ public:
 				vecLasers.erase(vecLasers.begin() + i);
 		}
 
-		// Remove particles
-		for (int i = vecParticles.size() - 1; i >= 0; i--)
-		{
-			if (vecParticles[i].isDead())
-				vecParticles.erase(vecParticles.begin() + i);
-		}
-
 		// Remove asteroids
 		for (int i = vecAsteroids.size() - 1; i >= 0; i--)
 		{
 			if (vecAsteroids[i].isDead()) {
 				SpaceObject a = vecAsteroids[i];
-				vecParticles.push_back({ a.position, a.vWorldVerticies, 3, 10, a.color });
+				particleSystem.AddParticlesFromVerts(a.vWorldVerticies, a.position, 10, 1.0f, olc::DARK_GREY);
 				vecAsteroids.erase(vecAsteroids.begin() + i);
 			}
 		}
@@ -252,9 +257,10 @@ public:
 			DrawLine(l.position, l.endPosition, l.color);
 
 		// Draw lasers
-		for (auto& p : vecParticles)
-			for (auto& i : p.subParticles)
-				Draw(i.x, i.y, p.color);
+		for (auto& p : particleSystem.particles) {
+			if (!p.isDead())
+				Draw(p.position.x, p.position.y, p.color);
+		}
 
 		// Draw player
 		DrawWireFrameModel(player.vRawVerticies, player.position, player.angle, 1, player.color);
