@@ -85,8 +85,8 @@ public:
 		vecAsteroids.clear();
 		vecLasers.clear();
 
-		player = SpaceObject(olc::vf2d(ScreenWidth() * 0.5f, ScreenHeight() * 0.5f),
-			olc::vf2d(0, -40),
+		player = SpaceObject(olc::vf2d(ScreenWidth() * 0.51f, ScreenHeight() * 0.5f),
+			olc::vf2d(0, -25),
 			0.0f,
 			{
 			{ 0.0f, -5.5f },
@@ -166,7 +166,7 @@ public:
 		for (auto& a : vecAsteroids)
 		{
 			a.Update(fElapsedTime * 0.2f);
-			a.angle += 0.1f * fElapsedTime;
+			//a.angle += 0.1f * fElapsedTime;
 			WrapCoordinates(a.position, a.position);
 			a.CalculateVerticiesWorldSpace();
 			ProcessVerticiesForCollision(a);
@@ -323,9 +323,16 @@ public:
 		float vxUnit = player.velocity.x / fLength;
 		float vyUnit = player.velocity.y / fLength;
 
+		if (fLength == 0) {
+			vxUnit = 0;
+			vyUnit = 0;
+		}
+
 		float angleOffset = acos(vxUnit) - 3.14f * 0.5f;
+
 		if (vyUnit > 0)
 			angleOffset = 3.14f - angleOffset;
+
 
 		for (int i = 0; i < amount; i++)
 		{
@@ -519,7 +526,6 @@ public:
 			olc::vf2d newVelocity1 = 0.5f * (averageVertexPosition1 - averageVertexPosition2) + a.velocity;
 			olc::vf2d newVelocity2 = 0.5f * (averageVertexPosition2 - averageVertexPosition1) + a.velocity;
 
-			// TODO sometimes gray have greater mass than breakmass
 			SpaceObject newAsteroid = { averageVertexPosition2, newVelocity2, 0, vVertices2, olc::YELLOW };
 
 			if (newAsteroid.mass <= nAsteroidBreakMass)
@@ -532,6 +538,7 @@ public:
 
 
 			a.position = averageVertexPosition1;
+			a.color = olc::YELLOW;
 			a.angle = 0;
 			a.velocity = newVelocity1;
 			a.vRawVerticies = vVertices1;

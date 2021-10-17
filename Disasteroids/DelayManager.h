@@ -14,7 +14,7 @@ private:
 	std::array<float, 2> delays;
 	const std::array<float, 2> durations{
 		0.2f,	// Throttle
-		0.5f	// LevelSwitch
+		2.0f	// LevelSwitch
 	};
 };
 
