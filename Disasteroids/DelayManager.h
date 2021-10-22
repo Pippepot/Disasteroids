@@ -4,17 +4,18 @@
 class DelayManager
 {
 public:
-	enum class delayTypes { throttle = 0, levelSwitch = 1};
-	void Update(float fElapsedTime);
+	enum class delayTypes { throttle = 0, levelSwitch = 1, playerKilled = 2};
+	void Update(float fElapsedTime, delayTypes type);
 	void PutOnCooldown(delayTypes type);
 	bool OnCooldown(delayTypes type);
 	float GetCooldown(delayTypes type);
 	float GetTotalDuration(delayTypes type);
 private:
-	std::array<float, 2> delays;
-	const std::array<float, 2> durations{
+	std::array<float, 3> delays;
+	const std::array<float, 3> durations{
 		0.2f,	// Throttle
-		2.0f	// LevelSwitch
+		3.0f,	// LevelSwitch / Death
+		3.0f,	// Player dead
 	};
 };
 

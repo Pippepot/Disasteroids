@@ -22,7 +22,6 @@ private:
 	const float nAsteroidBreakMass = 8.0f;
 	const float nAsteroidDisintegrateMass = 2.0f;
 	int nAsteroidCountAtLevelSwitch;
-	bool bIsSwitchingLevel;
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
 	ParticleSystem particleSystem;
@@ -100,8 +99,6 @@ public:
 		nScore = 0;
 
 		SpawnAsteroids(level);
-
-		bIsSwitchingLevel = false;
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
@@ -109,16 +106,28 @@ public:
 		Clear(olc::BLACK);
 
 		// Player dead. Reset
+		DelayManager::delayTypes type = DelayManager::delayTypes::playerKilled;
 		if (player.isDead()) {
-			particleSystem.AddParticlesFromVerts(player.vWorldVerticies, player.position, 10, 3, player.color);
-			ResetGame();
+			if (!delayManager.OnCooldown(type)) {
+				particleSystem.AddParticlesFromVerts(player.vWorldVerticies, player.position, 10, 1, player.color);
+				player.vRawVerticies.clear();
+				delayManager.PutOnCooldown(type);
+			}
+			else
+			{
+				delayManager.Update(fElapsedTime, type);
+				if (!delayManager.OnCooldown(type))
+					ResetGame();
+			}
 		}
-
-		UpdatePlayerControls(fElapsedTime);
+		else
+		{
+			UpdatePlayerControls(fElapsedTime);
+		}
 
 		UpdateEntities(fElapsedTime);
 
-		CheckWinCondition();
+		CheckWinCondition(fElapsedTime);
 
 		return true;
 	}
@@ -132,21 +141,24 @@ public:
 			player.angle -= 4.0f * fElapsedTime;
 
 		// Thrust / Acceleration
+		DelayManager::delayTypes type = DelayManager::delayTypes::throttle;
 		if (GetKey(olc::UP).bHeld || GetKey(olc::W).bHeld) {
 
 			olc::vf2d direction = olc::vf2d(sin(player.angle), -cos(player.angle)) * 20.0 * fElapsedTime;
 			player.velocity += direction;
 
-			if (!delayManager.OnCooldown(DelayManager::delayTypes::throttle)) {
+			if (!delayManager.OnCooldown(type)) {
 
 				for (int i = 0; i < 3; i++)
 				{
 					particleSystem.AddParticleFromVerts(player.position, player.velocity + (olc::vf2d(rand(), rand()).norm() * 0.5f - direction.norm()) * 10.0f, 1.0f, olc::DARK_BLUE);
 				}
 
-				delayManager.PutOnCooldown(DelayManager::delayTypes::throttle);
+				delayManager.PutOnCooldown(type);
 			}
 		}
+
+		delayManager.Update(fElapsedTime, type);
 
 		// Shoot laser
 		if (GetKey(olc::SPACE).bPressed)
@@ -179,16 +191,19 @@ public:
 		for (int m = 0; m < vecAsteroids.size(); m++)
 		{
 
-			if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
-				// Hit a big asteroid. Game over
-				if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
-					player.Kill();
-					return;
-				}
+			if (!player.isDead()) {
+				if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
+					// Hit a big asteroid. Game over
+					if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
+						player.Kill();
+						return;
+					}
 
-				nScore += vecAsteroids[m].mass;
-				vecAsteroids[m].Kill();	
+					nScore += vecAsteroids[m].mass;
+					vecAsteroids[m].Kill();
+				}
 			}
+
 
 			for (int n = m + 1; n < vecAsteroids.size(); n++)
 			{
@@ -219,8 +234,6 @@ public:
 			l.Update(fElapsedTime);
 
 		particleSystem.Update(fElapsedTime);
-
-		delayManager.Update(fElapsedTime);
 
 		DrawEntities();
 	}
@@ -269,14 +282,16 @@ public:
 		DrawString(2, 2, "SCORE: " + to_string(nScore));
 	}
 
-	void CheckWinCondition()
+	void CheckWinCondition(float fElapsedTime)
 	{
-		if (bIsSwitchingLevel) {
+		DelayManager::delayTypes type = DelayManager::delayTypes::levelSwitch;
+		float levelSwitchTimeLeft = delayManager.GetCooldown(type);
 
-			DelayManager::delayTypes type = DelayManager::delayTypes::levelSwitch;
+		if (levelSwitchTimeLeft > 0) {
 
+			delayManager.Update(fElapsedTime, type);
 			// Get amount of asteroids to destroy this frame
-			float fraction = delayManager.GetCooldown(type) / delayManager.GetTotalDuration(type);
+			float fraction = levelSwitchTimeLeft / delayManager.GetTotalDuration(type);
 			int asteroidsToDestroy = vecAsteroids.size() - nAsteroidCountAtLevelSwitch * fraction;
 
 			// Avoid errors
@@ -288,7 +303,7 @@ public:
 				vecAsteroids[i].Kill();
 			}
 
-			if (vecAsteroids.size() > 0)
+			if (delayManager.GetCooldown(type) > 0)
 				return;
 
 			vecAsteroids.clear();
@@ -297,8 +312,6 @@ public:
 			level++;
 
 			SpawnAsteroids(min(level, 4));
-
-			bIsSwitchingLevel = false;
 
 			return;
 		}
@@ -309,7 +322,6 @@ public:
 		{
 			delayManager.PutOnCooldown(DelayManager::delayTypes::levelSwitch);
 			nAsteroidCountAtLevelSwitch = vecAsteroids.size();
-			bIsSwitchingLevel = true;
 		}
 	}
 
@@ -350,7 +362,7 @@ public:
 
 			vecAsteroids.push_back({ {xPos,
 					yPos},
-					{40.0f * vyUnit, 40.0f * vxUnit},
+					{40.0f * vyUnit * level, 40.0f * vxUnit * level},
 					0.0f, vecModelAsteroid,
 					olc::YELLOW });
 		}

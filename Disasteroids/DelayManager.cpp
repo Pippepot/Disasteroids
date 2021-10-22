@@ -1,11 +1,9 @@
 #include "DelayManager.h"
 
-void DelayManager::Update(float fElapsedTime)
+void DelayManager::Update(float fElapsedTime, delayTypes type)
 {
-	for (int i = 0; i < delays.size(); i++)
-	{
-		delays[i] -= fElapsedTime;
-	}
+	int i = static_cast<int>(type);
+	delays[i] -= fElapsedTime;
 }
 
 void DelayManager::PutOnCooldown(delayTypes type)
