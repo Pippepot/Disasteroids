@@ -59,5 +59,8 @@
     <ClInclude Include="DelayManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="KeyCharMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

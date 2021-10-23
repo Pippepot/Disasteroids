@@ -4,6 +4,7 @@
 #include "ParticleSystem.h"
 #include "Laser.h"
 #include "DelayManager.h"
+#include "KeyCharMap.h"
 using namespace std;
 
 
@@ -27,6 +28,7 @@ private:
 	ParticleSystem particleSystem;
 	DelayManager delayManager;
 	SpaceObject player;
+	bool onTitleScreen = true;
 	int level;
 	int nScore;
 
@@ -59,11 +61,22 @@ private:
 public:
 	bool OnUserCreate() override
 	{
+		ShowTitleScreen();
+
+		return true;
+	}
+
+	void ShowTitleScreen() {
+		onTitleScreen = true;
+		DrawString(ScreenWidth() * 0.12f, ScreenHeight() * 0.7f, "PRESS ANY KEY TO START");
+	}
+
+	void StartGame() {
+		onTitleScreen = false;
+
 		CreateAsteroidModel();
 
 		ResetGame();
-
-		return true;
 	}
 
 	void CreateAsteroidModel() {
@@ -104,6 +117,21 @@ public:
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		Clear(olc::BLACK);
+
+		if (onTitleScreen) {
+
+			ShowTitleScreen();
+
+			for (auto& m : valueInputKeys) {
+				if (GetKey(m.key).bPressed) {
+					StartGame();
+					return true;
+				}
+			}
+
+
+			return true;
+		}
 
 		// Player dead. Reset
 		DelayManager::delayTypes type = DelayManager::delayTypes::playerKilled;
@@ -295,7 +323,7 @@ public:
 			int asteroidsToDestroy = vecAsteroids.size() - nAsteroidCountAtLevelSwitch * fraction;
 
 			// Avoid errors
-			asteroidsToDestroy = min(asteroidsToDestroy, vecAsteroids.size());
+			asteroidsToDestroy = std::fmin(asteroidsToDestroy, vecAsteroids.size());
 
 			for (int i = 0; i < asteroidsToDestroy; i++)
 			{

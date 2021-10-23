@@ -152,6 +152,7 @@
   <ItemGroup>
     <ClInclude Include="DelayManager.h" />
     <ClInclude Include="Entity.h" />
+    <ClInclude Include="KeyCharMap.h" />
     <ClInclude Include="Laser.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
     <ClInclude Include="Particle.h" />
