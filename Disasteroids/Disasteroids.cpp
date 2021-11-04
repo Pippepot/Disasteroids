@@ -29,6 +29,7 @@ private:
 	DelayManager delayManager;
 	SpaceObject player;
 	bool onTitleScreen = true;
+	olc::Decal* titleDecal;
 	int level;
 	int nScore;
 
@@ -61,20 +62,52 @@ private:
 public:
 	bool OnUserCreate() override
 	{
-		ShowTitleScreen();
+		CreateAsteroidModel();
+
+		InitializeTitleScreen();
 
 		return true;
 	}
 
-	void ShowTitleScreen() {
+	void InitializeTitleScreen()
+	{
+		olc::Sprite* titleSprite = new olc::Sprite("./Disasteroids.png");
+		titleDecal = new olc::Decal(titleSprite);
+
+		for (int i = 0; i < 4; i++)
+		{
+			vecAsteroids.push_back({ {(float)rand(),
+					(float)rand()},
+					{(float)rand() / RAND_MAX * 40.0f, (float)rand() / RAND_MAX * 40.0f},
+					0.0f, vecModelAsteroid,
+					olc::YELLOW });
+		}
+
+		// Check for overlap
+		for (int m = 0; m < vecAsteroids.size(); m++)
+		{
+			for (int n = m + 1; n < vecAsteroids.size(); n++)
+			{
+				vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n]);
+			}
+		}
+
+		ShowTitleScreen(0);
+	}
+
+	void ShowTitleScreen(float fElapsedTime) {
 		onTitleScreen = true;
 		DrawString(ScreenWidth() * 0.12f, ScreenHeight() * 0.7f, "PRESS ANY KEY TO START");
+		DrawDecal({ 0.0f, 0.0f },
+			titleDecal);
+
+		UpdateEntities(fElapsedTime);
+
+		DrawEntities();
 	}
 
 	void StartGame() {
 		onTitleScreen = false;
-
-		CreateAsteroidModel();
 
 		ResetGame();
 	}
@@ -120,7 +153,7 @@ public:
 
 		if (onTitleScreen) {
 
-			ShowTitleScreen();
+			ShowTitleScreen(fElapsedTime);
 
 			for (auto& m : valueInputKeys) {
 				if (GetKey(m.key).bPressed) {
@@ -213,12 +246,11 @@ public:
 		}
 
 		// Removed if statement that  adds to this vector. Insert to use again
-		//std::vector<SpaceObject*> collidingObjects;
+		std::vector<SpaceObject*> collidingObjects;
 
 		// Check for overlap
 		for (int m = 0; m < vecAsteroids.size(); m++)
 		{
-
 			if (!player.isDead()) {
 				if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
 					// Hit a big asteroid. Game over
@@ -241,21 +273,18 @@ public:
 
 		// TODO Fix multiple collisions. Pinching
 		
-		//while (collidingObjects.size() > 0)
+		//for (int i = 0; i < collidingObjects.size(); i++)
 		//{
-		//	for (int i = 0; i < vecAsteroids.size(); i++)
+		//	for (int j = 0; j < vecAsteroids.size(); j++)
 		//	{
-		//		if (collidingObjects[0] == &vecAsteroids[i])
+		//		if (collidingObjects[i] == &vecAsteroids[j])
 		//			continue;
-		//
-		//		if (collidingObjects[0]->ShapeOverlap_DIAGS_STATIC(vecAsteroids[i])) {
-		//			collidingObjects.push_back(&vecAsteroids[i]);
-		//			collidingObjects.push_back(collidingObjects[0]);
+
+		//		if (collidingObjects[i]->ShapeOverlap_DIAGS_STATIC(vecAsteroids[j])) {
+		//			collidingObjects.push_back(&vecAsteroids[j]);
+		//			collidingObjects.push_back(collidingObjects[i]);
 		//		}
-		//
-		//		collidingObjects.erase(collidingObjects.begin());
 		//	}
-		//
 		//}
 
 		for (auto& l : vecLasers)
@@ -339,7 +368,7 @@ public:
 
 			level++;
 
-			SpawnAsteroids(min(level, 4));
+			SpawnAsteroids(min(level, 5));
 
 			return;
 		}
@@ -671,7 +700,7 @@ public:
 						isWrapped = !isWrapped;
 						offset = lastVertexWrapped - lastVertex;
 
-						//// Linelineintersect between edges of screen and two offset vertices
+						// Linelineintersect between edges of screen and two offset vertices
 						LineScreenIntersect(lastVertexWrapped, currentVertLastWrap, currentIntersection);
 						currentVertTest = currentIntersection;
 					}
@@ -739,7 +768,7 @@ public:
 
 							olc::vf2d currentIntersection;
 
-							//// Linelineintersect between edges of screen and two offset vertices
+							// Linelineintersect between edges of screen and two offset vertices
 							LineScreenIntersect(lastVertexWrapped, currentVertLastWrap, currentIntersection);
 							currentVertTest = currentIntersection;
 							currentIntersection.y -= 1;
