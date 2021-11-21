@@ -23,20 +23,39 @@ public:
 	}
 
 private:
+
+	// Variables
+#pragma region Asteroid Settings
 	const int nAsteroidSize = 16;
 	const float nAsteroidBreakMass = 8.0f;
 	const float nAsteroidDisintegrateMass = 2.0f;
-	int nAsteroidCountAtLevelSwitch;
+#pragma endregion
+
+#pragma region References
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
 	ParticleSystem particleSystem;
 	DelayManager delayManager;
 	SpaceObject player;
-	bool onTitleScreen = true;
 	olc::Decal* titleDecal;
+#pragma endregion
+
+#pragma region Tracking
+	bool bOnTitleScreen = true;
+	bool bGameIsStarting;
 	float titlePositionY = -60;
-	int level;
+	int nAsteroidCountAtLevelSwitch;
+	int nLevel;
 	int nScore;
+#pragma endregion
+
+#pragma region Audio
+	int musicSample;
+#pragma endregion
+
+
+
+
 
 	vector<olc::vf2d> vecModelAsteroid;
 
@@ -67,11 +86,22 @@ private:
 public:
 	bool OnUserCreate() override
 	{
+		InitializeAudio();
+
 		CreateAsteroidModel();
 
 		InitializeTitleScreen();
 
+		bOnTitleScreen = true;
+
 		return true;
+	}
+
+	void InitializeAudio()
+	{
+		olc::SOUND::InitialiseAudio(44100, 1, 8, 512);
+
+		musicSample = olc::SOUND::LoadAudioSample("SampleA.wav");
 	}
 
 	void InitializeTitleScreen()
@@ -101,9 +131,9 @@ public:
 	}
 
 	void ShowTitleScreen(float fElapsedTime) {
-		onTitleScreen = true;
 
-		DrawString(ScreenWidth() * 0.12f, ScreenHeight() * 0.7f, "PRESS ANY KEY TO START");
+		if (!bGameIsStarting)
+			DrawString(ScreenWidth() * 0.12f, ScreenHeight() * 0.7f, "PRESS ANY KEY TO START");
 
 		titlePositionY = std::fmin(titlePositionY + fElapsedTime * 20.0f, 0);
 		DrawDecal({ 0.0f, titlePositionY },
@@ -115,9 +145,11 @@ public:
 	}
 
 	void StartGame() {
-		onTitleScreen = false;
+		delayManager.PutOnCooldown(DelayManager::delayTypes::levelSwitch);
+		nAsteroidCountAtLevelSwitch = vecAsteroids.size();
 
-		ResetGame();
+		bOnTitleScreen = false;
+		bGameIsStarting = true;
 	}
 
 	void CreateAsteroidModel() {
@@ -149,29 +181,38 @@ public:
 			},
 			olc::WHITE);
 		
-		level = 1;
+		nLevel = 1;
 		nScore = 0;
 
-		SpawnAsteroids(level);
+		SpawnAsteroids(nLevel);
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
 	{
 		Clear(olc::BLACK);
 
-		if (onTitleScreen) {
+		//olc::SOUND::PlaySample(musicSample);
+		if (bOnTitleScreen) {
 
 			ShowTitleScreen(fElapsedTime);
 
-			CheckWinCondition(fElapsedTime);
-
 			for (auto& m : valueInputKeys) {
 				if (GetKey(m.key).bPressed) {
-					delayManager.PutOnCooldown(DelayManager::delayTypes::levelSwitch);
-					nAsteroidCountAtLevelSwitch = vecAsteroids.size();
 					StartGame();
 					return true;
 				}
+			}
+
+			return true;
+		}
+
+		if (bGameIsStarting)
+		{
+			ShowTitleScreen(fElapsedTime);
+
+			if (!DestroyAsteroidsOnLevelSwitch(fElapsedTime)) {
+				bGameIsStarting = false;
+				ResetGame();
 			}
 
 
@@ -353,34 +394,17 @@ public:
 
 	void CheckWinCondition(float fElapsedTime)
 	{
-		DelayManager::delayTypes type = DelayManager::delayTypes::levelSwitch;
-		float levelSwitchTimeLeft = delayManager.GetCooldown(type);
-
-		if (levelSwitchTimeLeft > 0) {
-
-			delayManager.Update(fElapsedTime, type);
-			// Get amount of asteroids to destroy this frame
-			float fraction = levelSwitchTimeLeft / delayManager.GetTotalDuration(type);
-			int asteroidsToDestroy = vecAsteroids.size() - nAsteroidCountAtLevelSwitch * fraction;
-
-			// Avoid errors
-			asteroidsToDestroy = std::fmin(asteroidsToDestroy, vecAsteroids.size());
-
-			for (int i = 0; i < asteroidsToDestroy; i++)
-			{
-				nScore += vecAsteroids[i].mass;
-				vecAsteroids[i].Kill();
-			}
-
-			if (delayManager.GetCooldown(type) > 0)
+		if (delayManager.OnCooldown(DelayManager::delayTypes::levelSwitch))
+		{
+			if (DestroyAsteroidsOnLevelSwitch(fElapsedTime))
 				return;
 
 			vecAsteroids.clear();
 			vecLasers.clear();
 
-			level++;
+			nLevel++;
 
-			SpawnAsteroids(min(level, 5));
+			SpawnAsteroids(min(nLevel, 5));
 
 			return;
 		}
@@ -392,6 +416,30 @@ public:
 			delayManager.PutOnCooldown(DelayManager::delayTypes::levelSwitch);
 			nAsteroidCountAtLevelSwitch = vecAsteroids.size();
 		}
+	}
+
+	// Returns true if there are any asteroids left
+	bool DestroyAsteroidsOnLevelSwitch(float fElapsedTime)
+	{
+		DelayManager::delayTypes type = DelayManager::delayTypes::levelSwitch;
+		float levelSwitchTimeLeft = delayManager.GetCooldown(type);
+
+		delayManager.Update(fElapsedTime, type);
+		// Get amount of asteroids to destroy this frame
+		float fraction = levelSwitchTimeLeft / delayManager.GetTotalDuration(type);
+		int asteroidsToDestroy = vecAsteroids.size() - nAsteroidCountAtLevelSwitch * fraction;
+
+		// Avoid errors
+		asteroidsToDestroy = std::fmin(asteroidsToDestroy, vecAsteroids.size());
+
+		for (int i = 0; i < asteroidsToDestroy; i++)
+		{
+			nScore += vecAsteroids[i].mass;
+			vecAsteroids[i].Kill();
+		}
+
+		return delayManager.GetCooldown(type) > 0;
+
 	}
 
 	// TODO: Fix. spawn in semicircle around player
@@ -431,7 +479,7 @@ public:
 
 			vecAsteroids.push_back({ {xPos,
 					yPos},
-					{40.0f * vyUnit * level, 40.0f * vxUnit * level},
+					{40.0f * vyUnit * nLevel, 40.0f * vxUnit * nLevel},
 					0.0f, vecModelAsteroid,
 					olc::YELLOW });
 		}
@@ -1099,6 +1147,12 @@ public:
 		iOut.y = p1.y + u * (p2.y - p1.y);
 
 		return true; //All OK
+	}
+
+	bool OnUserDestroy()
+	{
+		olc::SOUND::DestroyAudio();
+		return true;
 	}
 
 };
