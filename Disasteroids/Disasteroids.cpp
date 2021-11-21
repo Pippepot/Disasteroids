@@ -1,5 +1,9 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
+
+#define OLC_PGEX_SOUND
+#include "olcPGEX_Sound.h"
+
 #include "SpaceObject.h"
 #include "ParticleSystem.h"
 #include "Laser.h"
@@ -30,6 +34,7 @@ private:
 	SpaceObject player;
 	bool onTitleScreen = true;
 	olc::Decal* titleDecal;
+	float titlePositionY = -60;
 	int level;
 	int nScore;
 
@@ -71,7 +76,7 @@ public:
 
 	void InitializeTitleScreen()
 	{
-		olc::Sprite* titleSprite = new olc::Sprite("./Disasteroids.png");
+		olc::Sprite* titleSprite = new olc::Sprite("./D6.png");
 		titleDecal = new olc::Decal(titleSprite);
 
 		for (int i = 0; i < 4; i++)
@@ -97,8 +102,11 @@ public:
 
 	void ShowTitleScreen(float fElapsedTime) {
 		onTitleScreen = true;
+
 		DrawString(ScreenWidth() * 0.12f, ScreenHeight() * 0.7f, "PRESS ANY KEY TO START");
-		DrawDecal({ 0.0f, 0.0f },
+
+		titlePositionY = std::fmin(titlePositionY + fElapsedTime * 20.0f, 0);
+		DrawDecal({ 0.0f, titlePositionY },
 			titleDecal);
 
 		UpdateEntities(fElapsedTime);
@@ -155,8 +163,12 @@ public:
 
 			ShowTitleScreen(fElapsedTime);
 
+			CheckWinCondition(fElapsedTime);
+
 			for (auto& m : valueInputKeys) {
 				if (GetKey(m.key).bPressed) {
+					delayManager.PutOnCooldown(DelayManager::delayTypes::levelSwitch);
+					nAsteroidCountAtLevelSwitch = vecAsteroids.size();
 					StartGame();
 					return true;
 				}
@@ -187,6 +199,9 @@ public:
 		}
 
 		UpdateEntities(fElapsedTime);
+
+		// Draw score
+		DrawString(2, 2, "SCORE: " + to_string(nScore));
 
 		CheckWinCondition(fElapsedTime);
 
@@ -334,9 +349,6 @@ public:
 
 		// Draw player
 		DrawWireFrameModel(player.vRawVerticies, player.position, player.angle, 1, player.color);
-
-		// Draw score
-		DrawString(2, 2, "SCORE: " + to_string(nScore));
 	}
 
 	void CheckWinCondition(float fElapsedTime)
@@ -430,7 +442,7 @@ public:
 		vector<SpaceObject> newAsteroids;
 
 		olc::vf2d vEndPos;
-		CalculateLineEndPosition(player.angle, player.position, vEndPos);
+		CalculateLineScreenIntersection(player.angle, player.position, vEndPos);
 
 		olc::vf2d lineDirection = vEndPos - player.position;
 		lineDirection = lineDirection.norm();
@@ -1026,7 +1038,7 @@ public:
 		//Draw(vecTransformedCoordinates[1].x, vecTransformedCoordinates[1].y, olc::RED);
 	}
 
-	void CalculateLineEndPosition(float a, olc::vf2d position, olc::vf2d& vEndPos)
+	void CalculateLineScreenIntersection(float a, olc::vf2d position, olc::vf2d& vEndPos)
 	{
 		olc::vi2d vHorizontalIntersect;
 		olc::vi2d vVerticalIntersect;
@@ -1058,18 +1070,6 @@ public:
 
 
 		vEndPos = (position - vHorizontalIntersect).mag2() > (position - vVerticalIntersect).mag2() ? vVerticalIntersect : vHorizontalIntersect;
-	}
-
-	void LineScreenIntersect(olc::vf2d p1, olc::vf2d p2, olc::vf2d& iOut)
-	{
-		if (LineLineIntersect(p1, p2, olc::vf2d(0,0), olc::vf2d(ScreenWidth(), 0), iOut))
-			return;
-		if (LineLineIntersect(p1, p2, olc::vf2d(ScreenWidth(), 0), olc::vf2d(ScreenWidth(), ScreenHeight()), iOut))
-			return;
-		if (LineLineIntersect(p1, p2, olc::vf2d(ScreenWidth(), ScreenHeight()), olc::vf2d(0, ScreenHeight()), iOut))
-			return;
-		if (LineLineIntersect(p1, p2, olc::vf2d(0, ScreenHeight()), olc::vf2d(0, 0), iOut))
-			return;
 	}
 
 	///Calculate intersection of two lines.
