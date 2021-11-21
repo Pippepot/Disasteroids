@@ -51,6 +51,11 @@ private:
 
 #pragma region Audio
 	int musicSample;
+	int laserShootSample;
+	int asteroidHitSample;
+	int asteroidBreakSample;
+	int playerBreakSample;
+	int levelCompleteSample;
 #pragma endregion
 
 
@@ -102,6 +107,11 @@ public:
 		olc::SOUND::InitialiseAudio(44100, 1, 8, 512);
 
 		musicSample = olc::SOUND::LoadAudioSample("SampleA.wav");
+		laserShootSample = olc::SOUND::LoadAudioSample("Laser.wav");
+		asteroidHitSample = olc::SOUND::LoadAudioSample("AsteroidHit.wav");
+		asteroidBreakSample = olc::SOUND::LoadAudioSample("AsteroidBreak.wav");
+
+		olc::SOUND::PlaySample(musicSample);
 	}
 
 	void InitializeTitleScreen()
@@ -191,7 +201,6 @@ public:
 	{
 		Clear(olc::BLACK);
 
-		//olc::SOUND::PlaySample(musicSample);
 		if (bOnTitleScreen) {
 
 			ShowTitleScreen(fElapsedTime);
@@ -365,6 +374,7 @@ public:
 		{
 			if (vecAsteroids[i].isDead()) {
 				SpaceObject a = vecAsteroids[i];
+				olc::SOUND::PlaySample(asteroidBreakSample);
 				particleSystem.AddParticlesFromVerts(a.vWorldVerticies, a.position, 10, 1.0f, olc::DARK_GREY);
 				vecAsteroids.erase(vecAsteroids.begin() + i);
 			}
@@ -487,6 +497,8 @@ public:
 
 	void ShootLaser()
 	{
+		olc::SOUND::PlaySample(laserShootSample);
+
 		vector<SpaceObject> newAsteroids;
 
 		olc::vf2d vEndPos;
@@ -679,6 +691,8 @@ public:
 
 			if (a.mass <= nAsteroidDisintegrateMass)
 				a.Kill();
+
+			olc::SOUND::PlaySample(asteroidHitSample);
 		}
 
 		vecLasers.push_back({ player.position, vEndPos, olc::BLUE, 1 });
