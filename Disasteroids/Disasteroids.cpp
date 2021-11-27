@@ -295,76 +295,39 @@ public:
 		ProcessVerticiesForCollision(player);
 		WrapCoordinates(player.position, player.position);
 
-		// Removed if statement that  adds to this vector. Insert to use again
-		std::vector<SpaceObject*> collidingObjects;
-
-		int nSimulationUpdates = 1;
-		float fSimElapsedTime = fElapsedTime / (float)nSimulationUpdates;
-
-		int nMaxSimulationSteps = 1;
-
-		for (int i = 0; i < nSimulationUpdates; i++)
+		// Update asteroids position and velocity
+		for (auto& a : vecAsteroids)
 		{
-			// Update asteroids position and velocity
-			for (auto& a : vecAsteroids)
-			{
-				a.Update(fSimElapsedTime);
-				a.angle += 0.1f * fSimElapsedTime;
-				WrapCoordinates(a.position, a.position);
-				a.CalculateVerticiesWorldSpace();
-				ProcessVerticiesForCollision(a);
-			}
-
-			for (int j = 0; j < nMaxSimulationSteps; j++)
-			{
-
-				// Check for overlap
-				for (int m = 0; m < vecAsteroids.size(); m++)
-				{
-					//if (!player.isDead()) {
-					//	if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
-					//		// Hit a big asteroid. Game over
-					//		if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
-					//			olc::SOUND::PlaySample(playerBreakSample);
-					//			player.Kill();
-					//			return;
-					//		}
-
-					//		nScore += vecAsteroids[m].mass;
-					//		vecAsteroids[m].Kill();
-					//	}
-					//}
-
-
-					for (int n = m + 1; n < vecAsteroids.size(); n++)
-					{
-						if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n])) {
-							collidingObjects.push_back(&vecAsteroids[m]);
-							collidingObjects.push_back(&vecAsteroids[n]);
-						}
-					}
-				}
-
-
-			}
+			a.Update(fElapsedTime);
+			a.angle += 0.1f * fElapsedTime;
+			WrapCoordinates(a.position, a.position);
+			a.CalculateVerticiesWorldSpace();
+			ProcessVerticiesForCollision(a);
 		}
 
-		//int i;
-		//for (i = 0; i < collidingObjects.size(); i++)
-		//{
-		//	for (int j = 0; j < vecAsteroids.size(); j++)
-		//	{
-		//		if (collidingObjects[i]->position == vecAsteroids[j].position)
-		//			continue;
+		// Check for overlap
+		for (int m = 0; m < vecAsteroids.size(); m++)
+		{
+			if (!player.isDead()) {
+				if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
+					// Hit a big asteroid. Game over
+					if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
+						//olc::SOUND::PlaySample(playerBreakSample);
+						//player.Kill();
+						//return;
+						break;
+					}
 
-		//		if (collidingObjects[i]->ShapeOverlap_DIAGS_STATIC(vecAsteroids[j])) {
-		//			collidingObjects.push_back(&vecAsteroids[j]);
-		//			collidingObjects.push_back(collidingObjects[i]);
-		//		}
-		//	}
-		//}
+					nScore += vecAsteroids[m].mass;
+					vecAsteroids[m].Kill();
+				}
+			}
 
-		// TODO Fix multiple collisions. Pinching
+
+			for (int n = m + 1; n < vecAsteroids.size(); n++)
+				vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n]);
+		}
+
 
 		for (auto& l : vecLasers)
 			l.Update(fElapsedTime);
@@ -401,15 +364,6 @@ public:
 		// Draw asteroids
 		for (auto& a : vecAsteroids)
 			DrawWireFrameModel(a.vWorldVerticies, olc::vf2d(), 0, 1, a.color);
-	
-		//for (auto& a : vecAsteroids) {
-		//	for (int i = 0; i < a.vProcessedVerticies.size(); i++)
-		//	{
-		//		DrawWireFrameModel(a.vProcessedVerticies[i], olc::vf2d(0, 0), 0, 1, i == 0 ? olc::GREEN : olc::RED);
-		//		//Draw(a.vProcessedVerticies[i][0].x, a.vProcessedVerticies[i][0].y);
-		//	}
-		//	Draw(a.vWorldVerticies[a.vWorldVerticies.size()-1].x, a.vWorldVerticies[a.vWorldVerticies.size() - 1].y, olc::BLUE);
-		//}
 
 		// Draw lasers
 		for (auto& l : vecLasers)

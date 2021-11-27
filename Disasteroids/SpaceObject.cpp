@@ -141,22 +141,15 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 					if (!hasCollided)
 						continue;
 		
-					olc::vf2d directionalDisplacement = displacement * (shape == 0 ? -0.5f : +0.5f);
+					float displacementDistribution = 0.5f;//other.mass / (other.mass + mass);
+					olc::vf2d directionalDisplacement = displacement * (shape == 0 ? -1 : 1);
 					directionalDisplacement += directionalDisplacement.norm() * 0.1f;
 
-					position += directionalDisplacement;
-					for (int wp = 0; wp < vWorldPositions.size(); wp++) {
-						vWorldPositions[wp] += directionalDisplacement;
-						for (int wv = 0; wv < vProcessedVerticies[wp].size(); wv++)
-							vProcessedVerticies[wp][wv] += directionalDisplacement;
-					}
+					position += directionalDisplacement * displacementDistribution;
 
-					other.position -= directionalDisplacement;
-					for (int wp = 0; wp < other.vWorldPositions.size(); wp++) {
-						other.vWorldPositions[wp] -= directionalDisplacement;
-						for (int wv = 0; wv < other.vProcessedVerticies[wp].size(); wv++)
-							other.vProcessedVerticies[wp][wv] -= directionalDisplacement;
-					}
+					//displacementDistribution = mass / (other.mass + mass);
+
+					other.position -= directionalDisplacement / displacementDistribution;
 
 					break;
 				}
@@ -188,13 +181,14 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 		float m1 = (dpNorm1 * (poly1->mass - poly2->mass) + 2.0f * poly2->mass * dpNorm2) / (poly1->mass + poly2->mass);
 		float m2 = (dpNorm2 * (poly2->mass - poly1->mass) + 2.0f * poly1->mass * dpNorm1) / (poly1->mass + poly2->mass);
 
-		m1 = std::clamp(m1, -10.0f, 10.0f);
-		m2 = std::clamp(m2, -10.0f, 10.0f);
+		//m1 = std::clamp(m1, -10.0f, 10.0f);
+		//m2 = std::clamp(m2, -10.0f, 10.0f);
+		float forceOnImpact = 0.5f; // How much force (velocity) is not lost on impact
 
-		poly1->velocity.x = tx * dpTan1 + nx * m1;
-		poly1->velocity.y = ty * dpTan1 + ny * m1;
-		poly2->velocity.x = tx * dpTan2 + nx * m2;
-		poly2->velocity.y = ty * dpTan2 + ny * m2;
+		poly1->velocity.x = tx * dpTan1 + nx * m1 * forceOnImpact;
+		poly1->velocity.y = ty * dpTan1 + ny * m1 * forceOnImpact;
+		poly2->velocity.x = tx * dpTan2 + nx * m2 * forceOnImpact;
+		poly2->velocity.y = ty * dpTan2 + ny * m2 * forceOnImpact;
 	}
 
 	// Can't overlap if static collision is resolved
