@@ -100,13 +100,20 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 
 		for (int i1 = 0; i1 < poly1->vProcessedVerticies.size(); i1++)
 		{
+			if (hasCollided)
+				break;
+
 			for (int i2 = 0; i2 < poly2->vProcessedVerticies.size(); i2++)
 			{
+				if (hasCollided)
+					break;
+
 				// Check diagonals of this polygon...
 				for (int p = 0; p < poly1->vProcessedVerticies[i1].size(); p++)
 				{
 					// This boy needs to be different for every wrap
 					// This boy do be different forevery wrap now :) Still don't work tho
+					// Works now I think
 					olc::vf2d line_r1s = poly1->vWorldPositions[i1];
 					olc::vf2d line_r1e = poly1->vProcessedVerticies[i1][p];
 
@@ -131,8 +138,27 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 						}
 					}
 
-					position.x += displacement.x * (shape == 0 ? -1 : +1);
-					position.y += displacement.y * (shape == 0 ? -1 : +1);
+					if (!hasCollided)
+						continue;
+		
+					olc::vf2d directionalDisplacement = displacement * (shape == 0 ? -0.5f : +0.5f);
+					directionalDisplacement += directionalDisplacement.norm() * 0.1f;
+
+					position += directionalDisplacement;
+					for (int wp = 0; wp < vWorldPositions.size(); wp++) {
+						vWorldPositions[wp] += directionalDisplacement;
+						for (int wv = 0; wv < vProcessedVerticies[wp].size(); wv++)
+							vProcessedVerticies[wp][wv] += directionalDisplacement;
+					}
+
+					other.position -= directionalDisplacement;
+					for (int wp = 0; wp < other.vWorldPositions.size(); wp++) {
+						other.vWorldPositions[wp] -= directionalDisplacement;
+						for (int wv = 0; wv < other.vProcessedVerticies[wp].size(); wv++)
+							other.vProcessedVerticies[wp][wv] -= directionalDisplacement;
+					}
+
+					break;
 				}
 			}
 		}
@@ -173,5 +199,98 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 
 	// Can't overlap if static collision is resolved
 	return hasCollided;
+}
+
+bool SpaceObject::ShapeOverlap_SAT_STATIC(SpaceObject& other)
+{
+	SpaceObject* poly1 = this;
+	SpaceObject* poly2 = &other;
+
+	// Broad phase
+	float distance = poly1->boundingCircleRadius + poly2->boundingCircleRadius;
+	bool closeEnough = false;
+	for (int i = 0; i < poly1->vWorldPositions.size(); i++)
+	{
+		for (int j = 0; j < poly2->vWorldPositions.size(); j++)
+		{
+			if ((poly1->vWorldPositions[i] - poly2->vWorldPositions[j]).mag() < distance) {
+				closeEnough = true;
+				break;
+			}
+
+			if (closeEnough)
+				break;
+		}
+	}
+
+	if (!closeEnough)
+		return false;
+
+	bool hasCollided = false;
+	float overlap = INFINITY;
+
+	// For each polygon, for each subpolygon
+	for (int shape = 0; shape < 2; shape++)
+	{
+		if (shape == 1)
+		{
+			poly1 = &other;
+			poly2 = this;
+		}
+
+		for (int pw = 0; pw < poly1->vProcessedVerticies.size(); pw++)
+		{
+			for (int pw2 = 0; pw2 < poly2->vProcessedVerticies.size(); pw2++)
+			{
+				for (int a = 0; a < poly1->vProcessedVerticies[pw].size(); a++)
+				{
+					int b = (a + 1) % poly1->vProcessedVerticies[pw].size();
+					olc::vf2d axisProj = { -(poly1->vProcessedVerticies[pw][b].y - poly1->vProcessedVerticies[pw][a].y), poly1->vProcessedVerticies[pw][b].x - poly1->vProcessedVerticies[pw][a].x };
+
+					// Optional normalisation of projection axis enhances stability slightly
+					//float d = sqrtf(axisProj.x * axisProj.x + axisProj.y * axisProj.y);
+					//axisProj = { axisProj.x / d, axisProj.y / d };
+
+					// Work out min and max 1D points for r1
+					float min_r1 = INFINITY, max_r1 = -INFINITY;
+					for (int p = 0; p < poly1->vProcessedVerticies[pw].size(); p++)
+					{
+						float q = (poly1->vProcessedVerticies[pw][p].x * axisProj.x + poly1->vProcessedVerticies[pw][p].y * axisProj.y);
+						min_r1 = std::min(min_r1, q);
+						max_r1 = std::max(max_r1, q);
+					}
+
+					// Work out min and max 1D points for r2
+					float min_r2 = INFINITY, max_r2 = -INFINITY;
+					for (int p = 0; p < poly2->vProcessedVerticies[pw2].size(); p++)
+					{
+						float q = (poly2->vProcessedVerticies[pw2][p].x * axisProj.x + poly2->vProcessedVerticies[pw2][p].y * axisProj.y);
+						min_r2 = std::min(min_r2, q);
+						max_r2 = std::max(max_r2, q);
+					}
+
+					// Calculate actual overlap along projected axis, and store the minimum
+					overlap = std::min(std::min(max_r1, max_r2) - std::max(min_r1, min_r2), overlap);
+
+					if ((max_r2 >= min_r1 && max_r1 >= min_r2))
+						break;
+
+					if (a == poly1->vProcessedVerticies[pw].size() - 1)
+						hasCollided = true;
+				}
+			}
+		}
+	}
+
+	if (!hasCollided)
+		return false;
+
+	// If we got here, the objects have collided, we will displace r1
+	// by overlap along the vector between the two object centers
+	olc::vf2d d = { other.position.x - position.x, other.position.y - position.y };
+	float s = sqrtf(d.x * d.x + d.y * d.y);
+	position.x -= overlap * d.x / s;
+	position.y -= overlap * d.y / s;
+	return true;
 }
 
