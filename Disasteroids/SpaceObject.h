@@ -19,7 +19,7 @@ public:
 	std::vector<olc::vf2d> vWorldVerticies;	// Verticies in world space
 	std::vector<olc::vf2d> vWorldPositions;	// Asteroids position with different wraps. Same indices as vProcessedVVerticies
 	std::vector<std::vector<olc::vf2d>> vProcessedVerticies; // Verticies in world space wrapped to match the visuals
-	std::vector<int> vProcessedVerticiesRawIndicies; // Original indicies of processed verticies.
+	std::vector<std::vector<int>> vProcessedVerticiesRawIndicies; // Original indicies of processed verticies. [worldWrap][vertex]
 
 	float boundingCircleRadius;
 };

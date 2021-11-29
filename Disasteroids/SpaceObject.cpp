@@ -100,13 +100,9 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 
 		for (int i1 = 0; i1 < poly1->vProcessedVerticies.size(); i1++)
 		{
-			if (hasCollided)
-				break;
 
 			for (int i2 = 0; i2 < poly2->vProcessedVerticies.size(); i2++)
 			{
-				if (hasCollided)
-					break;
 
 				// Check diagonals of this polygon...
 				for (int p = 0; p < poly1->vProcessedVerticies[i1].size(); p++)
@@ -141,17 +137,11 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 					if (!hasCollided)
 						continue;
 		
-					float displacementDistribution = 0.5f;//other.mass / (other.mass + mass);
-					olc::vf2d directionalDisplacement = displacement * (shape == 0 ? -1 : 1);
-					directionalDisplacement += directionalDisplacement.norm() * 0.1f;
+					olc::vf2d directionalDisplacement = displacement * (shape == 0 ? -0.5f : 0.5f);
 
-					position += directionalDisplacement * displacementDistribution;
+					position += directionalDisplacement;
 
-					//displacementDistribution = mass / (other.mass + mass);
-
-					other.position -= directionalDisplacement / displacementDistribution;
-
-					break;
+					other.position -= directionalDisplacement;
 				}
 			}
 		}
@@ -183,7 +173,7 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 
 		//m1 = std::clamp(m1, -10.0f, 10.0f);
 		//m2 = std::clamp(m2, -10.0f, 10.0f);
-		float forceOnImpact = 0.5f; // How much force (velocity) is not lost on impact
+		float forceOnImpact = 0.9f; // How much force (velocity) is not lost on impact
 
 		poly1->velocity.x = tx * dpTan1 + nx * m1 * forceOnImpact;
 		poly1->velocity.y = ty * dpTan1 + ny * m1 * forceOnImpact;
@@ -234,45 +224,50 @@ bool SpaceObject::ShapeOverlap_SAT_STATIC(SpaceObject& other)
 
 		for (int pw = 0; pw < poly1->vProcessedVerticies.size(); pw++)
 		{
-			for (int pw2 = 0; pw2 < poly2->vProcessedVerticies.size(); pw2++)
-			{
 				for (int a = 0; a < poly1->vProcessedVerticies[pw].size(); a++)
 				{
 					int b = (a + 1) % poly1->vProcessedVerticies[pw].size();
 					olc::vf2d axisProj = { -(poly1->vProcessedVerticies[pw][b].y - poly1->vProcessedVerticies[pw][a].y), poly1->vProcessedVerticies[pw][b].x - poly1->vProcessedVerticies[pw][a].x };
 
 					// Optional normalisation of projection axis enhances stability slightly
-					//float d = sqrtf(axisProj.x * axisProj.x + axisProj.y * axisProj.y);
-					//axisProj = { axisProj.x / d, axisProj.y / d };
+					axisProj = axisProj.norm();
 
 					// Work out min and max 1D points for r1
 					float min_r1 = INFINITY, max_r1 = -INFINITY;
-					for (int p = 0; p < poly1->vProcessedVerticies[pw].size(); p++)
+					for (int pw2 = 0; pw2 < poly1->vProcessedVerticies.size(); pw2++)
 					{
-						float q = (poly1->vProcessedVerticies[pw][p].x * axisProj.x + poly1->vProcessedVerticies[pw][p].y * axisProj.y);
-						min_r1 = std::min(min_r1, q);
-						max_r1 = std::max(max_r1, q);
+						for (int p = 0; p < poly1->vProcessedVerticies[pw2].size(); p++)
+						{
+							float q = (poly1->vProcessedVerticies[pw2][p].x * axisProj.x + poly1->vProcessedVerticies[pw2][p].y * axisProj.y);
+							min_r1 = std::min(min_r1, q);
+							max_r1 = std::max(max_r1, q);
+						}
 					}
 
 					// Work out min and max 1D points for r2
 					float min_r2 = INFINITY, max_r2 = -INFINITY;
-					for (int p = 0; p < poly2->vProcessedVerticies[pw2].size(); p++)
+					for (int pw2 = 0; pw2 < poly2->vProcessedVerticies.size(); pw2++)
 					{
-						float q = (poly2->vProcessedVerticies[pw2][p].x * axisProj.x + poly2->vProcessedVerticies[pw2][p].y * axisProj.y);
-						min_r2 = std::min(min_r2, q);
-						max_r2 = std::max(max_r2, q);
+						for (int p = 0; p < poly2->vProcessedVerticies[pw2].size(); p++)
+						{
+							float q = (poly2->vProcessedVerticies[pw2][p].x * axisProj.x + poly2->vProcessedVerticies[pw2][p].y * axisProj.y);
+							min_r2 = std::min(min_r2, q);
+							max_r2 = std::max(max_r2, q);
+						}
 					}
 
 					// Calculate actual overlap along projected axis, and store the minimum
 					overlap = std::min(std::min(max_r1, max_r2) - std::max(min_r1, min_r2), overlap);
 
-					if ((max_r2 >= min_r1 && max_r1 >= min_r2))
+					if (!(max_r2 >= min_r1 && max_r1 >= min_r2)) {
+						hasCollided = false;
 						break;
+					}
 
-					if (a == poly1->vProcessedVerticies[pw].size() - 1)
-						hasCollided = true;
+					// TODO: fix this s***. has collided should be true only if all axes of one wrap are overlapping
+					hasCollided = true;
 				}
-			}
+			
 		}
 	}
 
