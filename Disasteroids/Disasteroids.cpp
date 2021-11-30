@@ -45,6 +45,7 @@ private:
 	bool bOnTitleScreen;
 	bool bGameIsStarting;
 	bool bSwitchingLevel;
+	bool bForceLevelSwitch;
 	int nAsteroidCountAtLevelSwitch;
 	int nLevel;
 	int nScore;
@@ -251,8 +252,10 @@ public:
 			else
 			{
 				delayManager.Update(fElapsedTime, type);
-				if (!delayManager.OnCooldown(type))
+				if (!delayManager.OnCooldown(type)) {
+					bForceLevelSwitch = true;
 					ResetGame();
+				}
 			}
 		}
 		else
@@ -265,7 +268,7 @@ public:
 		// Draw score
 		DrawString(2, 2, "SCORE: " + to_string(nScore));
 
-		CheckWinCondition(fElapsedTime);
+		HandleLevelSwitch(fElapsedTime);
 
 		return true;
 	}
@@ -396,27 +399,28 @@ public:
 		DrawWireFrameModel(player.vRawVerticies, player.position, player.angle, 1, player.color);
 	}
 
-	void CheckWinCondition(float fElapsedTime)
+	// Checks if the level is complete
+	// also clears the level if it is complete
+	// Kinda violates the rule of having methods only do one thing
+	void HandleLevelSwitch(float fElapsedTime)
 	{
+		if (bForceLevelSwitch) {
+			bForceLevelSwitch = false;
+			LoadNextLevel();
+		}
+
+		// Destroy every asteroid then spawn new level (new asteroids)
 		if (bSwitchingLevel)
 		{
-			// If the level is not cleared - wait
-			if (!DestroyAsteroidsOnLevelSwitch(fElapsedTime))
-				return;
-
-			vecAsteroids.clear();
-			vecLasers.clear();
-
-			nLevel++;
-			bSwitchingLevel = false;
-
-			SpawnAsteroids(min(nLevel, 5));
+			// If the level is cleared, load the next one
+			if (DestroyAsteroidsOnLevelSwitch(fElapsedTime))
+				LoadNextLevel();
 
 			return;
 		}
 
 
-		// Level Clear
+		// Check if the level is complete
 		if (find_if(vecAsteroids.begin(), vecAsteroids.end(), [&](SpaceObject o) { return (o.mass > nAsteroidBreakMass); }) == vecAsteroids.end())
 		{
 			delayManager.PutOnCooldown(DelayManager::delayTypes::levelSwitch);
@@ -453,6 +457,17 @@ public:
 
 		return levelSwitchTimeLeft <= 0;
 
+	}
+
+	void LoadNextLevel()
+	{
+		vecAsteroids.clear();
+		vecLasers.clear();
+
+		nLevel++;
+		bSwitchingLevel = false;
+
+		SpawnAsteroids(min(nLevel, 5));
 	}
 
 	void SpawnAsteroids(int amount) {
