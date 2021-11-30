@@ -41,16 +41,17 @@ private:
 #pragma endregion
 
 #pragma region Tracking
+	float titlePositionY = -60;
 	bool bOnTitleScreen;
 	bool bGameIsStarting;
-	float titlePositionY = -60;
+	bool bSwitchingLevel;
 	int nAsteroidCountAtLevelSwitch;
 	int nLevel;
 	int nScore;
 #pragma endregion
 
 #pragma region Audio
-	int musicSample;
+	int musicSample; // Missing
 	int laserShootSample;
 	int asteroidHitSample;
 	int asteroidBreakSample;
@@ -59,7 +60,7 @@ private:
 	int levelCompleteSample;
 #pragma endregion
 
-	bool debugSkipTitleScreen = true;
+	bool bDebugSkipTitleScreen = false;
 
 
 
@@ -93,11 +94,14 @@ private:
 public:
 	bool OnUserCreate() override
 	{
+		// Seed the rand function with the current time
+		std::srand(std::time(nullptr));
+
 		InitializeAudio();
 
 		CreateAsteroidModel();
 
-		if (debugSkipTitleScreen) {
+		if (bDebugSkipTitleScreen) {
 			ResetGame();
 			return true;
 		}
@@ -113,12 +117,13 @@ public:
 	{
 		olc::SOUND::InitialiseAudio(44100, 1, 8, 512);
 
-		musicSample = olc::SOUND::LoadAudioSample("SampleA.wav");
-		laserShootSample = olc::SOUND::LoadAudioSample("Laser.wav");
-		asteroidHitSample = olc::SOUND::LoadAudioSample("AsteroidHit.wav");
-		asteroidBreakSample = olc::SOUND::LoadAudioSample("AsteroidBreak.wav");
-		playerBreakSample = olc::SOUND::LoadAudioSample("PlayerBreak.wav");
-		playerThrustSample = olc::SOUND::LoadAudioSample("PlayerThrust.wav");
+		musicSample = olc::SOUND::LoadAudioSample("Audio/SampleA.wav");
+		laserShootSample = olc::SOUND::LoadAudioSample("Audio/Laser2.wav");
+		asteroidHitSample = olc::SOUND::LoadAudioSample("Audio/AsteroidHit.wav");
+		asteroidBreakSample = olc::SOUND::LoadAudioSample("Audio/AsteroidBreak5.wav");
+		playerBreakSample = olc::SOUND::LoadAudioSample("Audio/PlayerBreak.wav");
+		playerThrustSample = olc::SOUND::LoadAudioSample("Audio/PlayerThrust.wav");
+		levelCompleteSample = olc::SOUND::LoadAudioSample("Audio/LevelComplete.wav");
 
 		olc::SOUND::PlaySample(musicSample);
 	}
@@ -133,9 +138,13 @@ public:
 			vecAsteroids.push_back({ {(float)rand(),
 					(float)rand()},
 					{(float)rand() / RAND_MAX * 8.0f, (float)rand() / RAND_MAX * 8.0f},
-					0.0f, vecModelAsteroid,
+					(float)rand() / RAND_MAX * 3.14f, vecModelAsteroid,
 					olc::YELLOW });
 		}
+
+		for (int m = 0; m < vecAsteroids.size(); m++)
+			for (int n = m + 1; n < vecAsteroids.size(); n++)
+				vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(vecAsteroids[n]);
 
 		ShowTitleScreen(0);
 	}
@@ -158,6 +167,7 @@ public:
 		delayManager.PutOnCooldown(DelayManager::delayTypes::levelSwitch);
 		nAsteroidCountAtLevelSwitch = vecAsteroids.size();
 
+		bSwitchingLevel = true;
 		bOnTitleScreen = false;
 		bGameIsStarting = true;
 	}
@@ -180,9 +190,12 @@ public:
 		vecAsteroids.clear();
 		vecLasers.clear();
 
-		player = SpaceObject(olc::vf2d(ScreenWidth() * 0.5f, ScreenHeight() * 0.5f),
-			olc::vf2d(0, -25),
-			0.0f,
+		float angle = (float)rand() / RAND_MAX * 3.14f;
+		olc::vf2d velocity = olc::vf2d(sin(angle), -cos(angle)) * 25;
+
+		player = SpaceObject(olc::vf2d(ScreenWidth() * ((float)rand() / RAND_MAX), ScreenHeight() * ((float)rand() / RAND_MAX)),
+			velocity,
+			angle,
 			{
 			{ 0.0f, -5.5f },
 			{ -2.5f, 2.5f },
@@ -191,10 +204,9 @@ public:
 			},
 			olc::WHITE);
 		
-		nLevel = 1;
+		// Level will be incremented and asteroids will be spawned in CheckWinCondition()
+		nLevel = 0;
 		nScore = 0;
-
-		SpawnAsteroids(nLevel);
 	}
 
 	bool OnUserUpdate(float fElapsedTime) override
@@ -219,7 +231,7 @@ public:
 		{
 			ShowTitleScreen(fElapsedTime);
 
-			if (!DestroyAsteroidsOnLevelSwitch(fElapsedTime)) {
+			if (DestroyAsteroidsOnLevelSwitch(fElapsedTime)) {
 				bGameIsStarting = false;
 				ResetGame();
 			}
@@ -386,15 +398,17 @@ public:
 
 	void CheckWinCondition(float fElapsedTime)
 	{
-		if (delayManager.OnCooldown(DelayManager::delayTypes::levelSwitch))
+		if (bSwitchingLevel)
 		{
-			if (DestroyAsteroidsOnLevelSwitch(fElapsedTime))
+			// If the level is not cleared - wait
+			if (!DestroyAsteroidsOnLevelSwitch(fElapsedTime))
 				return;
 
 			vecAsteroids.clear();
 			vecLasers.clear();
 
 			nLevel++;
+			bSwitchingLevel = false;
 
 			SpawnAsteroids(min(nLevel, 5));
 
@@ -407,10 +421,12 @@ public:
 		{
 			delayManager.PutOnCooldown(DelayManager::delayTypes::levelSwitch);
 			nAsteroidCountAtLevelSwitch = vecAsteroids.size();
+			olc::SOUND::PlaySample(levelCompleteSample);
+			bSwitchingLevel = true;
 		}
 	}
 
-	// Returns true if there are any asteroids left
+	// Returns true when the level is cleared from asteroids
 	bool DestroyAsteroidsOnLevelSwitch(float fElapsedTime)
 	{
 		DelayManager::delayTypes type = DelayManager::delayTypes::levelSwitch;
@@ -424,13 +440,18 @@ public:
 		// Avoid errors
 		asteroidsToDestroy = std::fmin(asteroidsToDestroy, vecAsteroids.size());
 
+		bool waitForAsteroidsToDie = asteroidsToDestroy > 0;
+
 		for (int i = 0; i < asteroidsToDestroy; i++)
 		{
 			nScore += vecAsteroids[i].mass;
 			vecAsteroids[i].Kill();
 		}
 
-		return delayManager.GetCooldown(type) > 0;
+		if (waitForAsteroidsToDie)
+			return false;
+
+		return levelSwitchTimeLeft <= 0;
 
 	}
 
