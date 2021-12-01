@@ -60,7 +60,7 @@ private:
 	int playerThrustSample;
 	int levelCompleteSample;
 #pragma endregion
-
+	
 	bool bDebugSkipTitleScreen = false;
 
 
@@ -103,6 +103,7 @@ public:
 		CreateAsteroidModel();
 
 		if (bDebugSkipTitleScreen) {
+			bForceLevelSwitch = true;
 			ResetGame();
 			return true;
 		}
@@ -118,7 +119,7 @@ public:
 	{
 		olc::SOUND::InitialiseAudio(44100, 1, 8, 512);
 
-		musicSample = olc::SOUND::LoadAudioSample("Audio/SampleA.wav");
+		//musicSample = olc::SOUND::LoadAudioSample("Audio/SampleA.wav");
 		laserShootSample = olc::SOUND::LoadAudioSample("Audio/Laser2.wav");
 		asteroidHitSample = olc::SOUND::LoadAudioSample("Audio/AsteroidHit.wav");
 		asteroidBreakSample = olc::SOUND::LoadAudioSample("Audio/AsteroidBreak5.wav");
@@ -126,7 +127,7 @@ public:
 		playerThrustSample = olc::SOUND::LoadAudioSample("Audio/PlayerThrust.wav");
 		levelCompleteSample = olc::SOUND::LoadAudioSample("Audio/LevelComplete.wav");
 
-		olc::SOUND::PlaySample(musicSample);
+		//olc::SOUND::PlaySample(musicSample);
 	}
 
 	void InitializeTitleScreen()
@@ -576,11 +577,13 @@ public:
 				if (firstIntersectionIndex != -1)
 					break;
 
+				int processedVertCount = a.vProcessedVerticies[listIndex].size();
+
 				// For every processed vertex. Check if there is an intersection and where it is
-				for (int vertIndex = 0; vertIndex < a.vProcessedVerticies[listIndex].size() - 1; vertIndex++)
+				for (int vertIndex = 0; vertIndex < processedVertCount; vertIndex++)
 				{
 					// Possibly do some optimization. AABB
-					if (LineLineIntersect(a.vProcessedVerticies[listIndex][vertIndex], a.vProcessedVerticies[listIndex][vertIndex + 1], player.position, vEndPos, firstIntersection)) {
+					if (LineLineIntersect(a.vProcessedVerticies[listIndex][vertIndex], a.vProcessedVerticies[listIndex][(vertIndex + 1) % processedVertCount], player.position, vEndPos, firstIntersection)) {
 						// Intersection is in wrapped world space. Transform to world space
 						firstIntersection += a.position - a.vWorldPositions[listIndex];
 						firstIntersectionIndex = a.vProcessedVerticiesRawIndicies[listIndex][vertIndex];
@@ -594,26 +597,21 @@ public:
 			if (firstIntersectionIndex == -1)
 				continue;
 
-			// WHy would I need to do this more than once?
-			for (int listIndex = 0; listIndex < a.vProcessedVerticies.size(); listIndex++)
+			int worldVertCount = a.vWorldVerticies.size();
+
+			// Find second intersection
+			for (int vertIndex = 0; vertIndex < worldVertCount; vertIndex++)
 			{
-				if (secondIntersectionIndex != -1)
+				if (vertIndex == firstIntersectionIndex)
+					continue;
+
+				olc::vf2d vNewStartPos = firstIntersection - lineDirection * 1000;
+				olc::vf2d vNewEndPos = firstIntersection + lineDirection * 1000;
+
+				// TODO: figure out index formats. whatever that means. basically translate from 
+				if (LineLineIntersect(a.vWorldVerticies[vertIndex], a.vWorldVerticies[(vertIndex + 1) % worldVertCount], vNewStartPos, vNewEndPos, secondIntersection)) {
+					secondIntersectionIndex = vertIndex;
 					break;
-
-				// Find second intersection
-				for (int vertIndex = 0; vertIndex < a.vWorldVerticies.size(); vertIndex++)
-				{
-					if (vertIndex == firstIntersectionIndex)
-						continue;
-
-					olc::vf2d vNewStartPos = firstIntersection - lineDirection * 1000;
-					olc::vf2d vNewEndPos = firstIntersection + lineDirection * 1000;
-
-					// TODO: figure out index formats. whatever that means. basically translate from 
-					if (LineLineIntersect(a.vWorldVerticies[vertIndex], a.vWorldVerticies[(vertIndex + 1) % a.vWorldVerticies.size()], vNewStartPos, vNewEndPos, secondIntersection)) {
-						secondIntersectionIndex = vertIndex;
-						break;
-					}
 				}
 			}
 
@@ -637,7 +635,7 @@ public:
 				secondIntersection = tempVert;
 			}
 
-			for (int i = 0; i < a.vWorldVerticies.size(); i++)
+			for (int i = 0; i < worldVertCount; i++)
 			{
 				if (i > firstIntersectionIndex && i <= secondIntersectionIndex)
 				{
@@ -722,271 +720,6 @@ public:
 		for (auto& a : newAsteroids)
 			vecAsteroids.push_back(a);
 
-		// Terrible fucken code
-		/*
-		// Intersect with asteroids
-		for (auto& a : vecAsteroids)
-		{
-			vector<olc::vf2d> vIntersections;
-			vector<int> vIntersectingVerticiesIndicies;
-			// Loop through every vertex on the asteroid and locate the intersecting verticies
-			int lastVertexIndex = a.vRawVerticies.size() - 1;
-			olc::vf2d currentVertexWrapped;
-			olc::vf2d lastVertexWrapped;
-			olc::vf2d offset;
-			olc::vf2d currentVertTest;
-			olc::vf2d lastVertTest;
-			bool useTempVerts = false;
-			bool isWrapped;
-			bool lastWrapped;
-			bool sameWrapAsLaser;
-			bool intersectionWrapped;
-
-			olc::vf2d lastVertex;
-			lastVertex.x = a.vRawVerticies.back().x * cosf(a.angle) - a.vRawVerticies.back().y * sinf(a.angle);
-			lastVertex.y = a.vRawVerticies.back().x * sinf(a.angle) + a.vRawVerticies.back().y * cosf(a.angle);
-			lastVertex += a.position;
-
-			WrapCoordinates(lastVertex, lastVertexWrapped);
-
-			for (int i = 0; i < a.vRawVerticies.size(); i++)
-			{
-				olc::vf2d currentVertex;
-				currentVertex.x = a.vRawVerticies[i].x * cosf(a.angle) - a.vRawVerticies[i].y * sinf(a.angle);
-				currentVertex.y = a.vRawVerticies[i].x * sinf(a.angle) + a.vRawVerticies[i].y * cosf(a.angle);
-				currentVertex += a.position;
-
-				WrapCoordinates(currentVertex, currentVertexWrapped);
-				isWrapped = currentVertex != currentVertexWrapped;
-
-				offset = currentVertexWrapped - currentVertex;
-
-				currentVertTest = currentVertexWrapped;
-				lastVertTest = lastVertexWrapped;
-
-				// Check if the vertecies are not both wrapped
-				if ((olc::vi2d)(lastVertexWrapped - currentVertexWrapped) != (olc::vi2d)(lastVertex - currentVertex))
-				{
-					// If the currentvertex is wrapped, make temporary vertex
-					// Else make a temporary vertex out of the last vertex
-					sameWrapAsLaser = (currentVertexWrapped - vEndPos).mag() < ScreenHeight() * 0.5f;
-					if (sameWrapAsLaser)
-					{
-						// same wap move last vertex
-						// different wrap move current vertex
-						olc::vf2d vOffset = currentVertexWrapped - currentVertex;
-						olc::vf2d lastVertCurrentWrap = lastVertex + vOffset;
-
-						olc::vf2d currentIntersection;
-
-						// Linelineintersect between edges of screen and two offset vertices
-						LineScreenIntersect(currentVertexWrapped, lastVertCurrentWrap, currentIntersection);
-						lastVertTest = currentIntersection;
-						currentIntersection.y -= 1;
-						offset = currentVertexWrapped - currentVertex;
-					}
-					else
-					{
-						olc::vf2d vOffset = lastVertexWrapped - lastVertex;
-						olc::vf2d currentVertLastWrap = currentVertex + vOffset;
-						// Do something different based on wrap
-						olc::vf2d currentIntersection;
-						// Since the last vertex is on the opposite wrap, invert the wrap for the new current vertex
-						isWrapped = !isWrapped;
-						offset = lastVertexWrapped - lastVertex;
-
-						// Linelineintersect between edges of screen and two offset vertices
-						LineScreenIntersect(lastVertexWrapped, currentVertLastWrap, currentIntersection);
-						currentVertTest = currentIntersection;
-					}
-
-				}
-
-				olc::vf2d intersection;
-				if (LineLineIntersect(currentVertTest, lastVertTest, player.position, vEndPos, intersection))
-				{
-					intersection -= a.position + offset;
-
-					vIntersectingVerticiesIndicies.push_back(lastVertexIndex);
-					vIntersections.push_back(intersection);
-					lastWrapped = isWrapped;
-					intersectionWrapped = isWrapped;
-				}
-
-				lastVertexIndex = i;
-				lastVertex = currentVertex;
-				lastVertexWrapped = currentVertexWrapped;
-			}
-
-			// The asteroid may be wrapped
-			if (vIntersections.size() == 1)
-			{
-				// Create new ray
-				olc::vf2d vStartPos = vEndPos;
-				olc::vf2d screenOffset = olc::vf2d();
-
-				// Wrap ray around
-				if (vStartPos.x == 0.0f) { vStartPos.x = (float)ScreenWidth() - 1; screenOffset.x = ScreenWidth() - 1; }
-				else if (vStartPos.x == (float)ScreenWidth() - 1) { vStartPos.x = 0; screenOffset.x = -ScreenWidth(); }
-				if (vStartPos.y == 0.0f) { vStartPos.y = (float)ScreenHeight() - 1; screenOffset.y = ScreenHeight() - 1; }
-				else if (vStartPos.y == (float)ScreenHeight() - 1) { vStartPos.y = 0; screenOffset.y = -ScreenHeight(); }
-
-				lastVertexIndex = a.vRawVerticies.size() - 1;
-				olc::vf2d vNewEndPos;
-				CalculateLineEndPosition(player.angle, vStartPos, vNewEndPos);
-				// The new ray should not intersect with the already intersected geometry
-
-				for (int i = 0; i < a.vRawVerticies.size(); i++)
-				{
-					olc::vf2d currentVertex;
-					currentVertex.x = a.vRawVerticies[i].x * cosf(a.angle) - a.vRawVerticies[i].y * sinf(a.angle);
-					currentVertex.y = a.vRawVerticies[i].x * sinf(a.angle) + a.vRawVerticies[i].y * cosf(a.angle);
-					currentVertex += a.position;
-
-					WrapCoordinates(currentVertex, currentVertexWrapped);
-					isWrapped = currentVertex != currentVertexWrapped;
-					offset = olc::vf2d();
-					screenOffset = currentVertexWrapped - currentVertex;
-
-					currentVertTest = currentVertexWrapped;
-					lastVertTest = lastVertexWrapped;
-
-					// Check if the vertecies are not both wrapped and if the vertex is the opposite wrap of the first vertex
-					if ((olc::vi2d)(lastVertexWrapped - currentVertexWrapped) != (olc::vi2d)(lastVertex - currentVertex))
-					{
-
-						sameWrapAsLaser = (currentVertexWrapped - vStartPos).mag() < ScreenHeight() * 0.5f;
-						if (!sameWrapAsLaser)
-						{
-							olc::vf2d vOffset = lastVertexWrapped - lastVertex;
-							olc::vf2d currentVertLastWrap = currentVertex + vOffset;
-
-							olc::vf2d currentIntersection;
-
-							// Linelineintersect between edges of screen and two offset vertices
-							LineScreenIntersect(lastVertexWrapped, currentVertLastWrap, currentIntersection);
-							currentVertTest = currentIntersection;
-							currentIntersection.y -= 1;
-							offset = vStartPos - vEndPos;
-							isWrapped = lastVertex != lastVertexWrapped;
-						}
-						else
-						{
-							olc::vf2d vOffset = currentVertexWrapped - currentVertex;
-							olc::vf2d lastVertCurrentWrap = lastVertex + vOffset;
-
-							olc::vf2d currentIntersection;
-
-							// Linelineintersect between edges of screen and two offset vertices
-							LineScreenIntersect(currentVertexWrapped, lastVertCurrentWrap, currentIntersection);
-							lastVertTest = currentIntersection;
-							offset = currentVertexWrapped - currentVertex - screenOffset;
-						}
-					}
-
-					olc::vf2d intersection;
-					if (isWrapped != intersectionWrapped && LineLineIntersect(currentVertTest, lastVertTest, vStartPos, vNewEndPos, intersection))
-					{
-						intersection -= a.position + offset + screenOffset;
-						// - a.position + vertwrapped - vert + offset
-						vIntersectingVerticiesIndicies.push_back(lastVertexIndex);
-						vIntersections.push_back(intersection);
-						break;
-					}
-
-					lastVertexIndex = i;
-					lastVertex = currentVertex;
-					lastVertexWrapped = currentVertexWrapped;
-				}
-
-			}
-
-			// Cut the asteroid
-
-			// If we have not hit two sides just ignore
-			if (vIntersections.size() < 2)
-				continue;
-
-			olc::vf2d averageVertexPosition1;
-			olc::vf2d averageVertexPosition2;
-			vector<olc::vf2d> vVertices1;
-			vector<olc::vf2d> vVertices2;
-
-			// Put indecies into the right order. Somehow...
-			if (vIntersectingVerticiesIndicies[0] > vIntersectingVerticiesIndicies[1])
-			{
-				swap(vIntersectingVerticiesIndicies[0], vIntersectingVerticiesIndicies[1]);
-			}
-			else
-			{
-				swap(vIntersections[0], vIntersections[1]);
-			}
-
-			olc::vf2d vertToAdd;
-			for (int i = 0; i < a.vRawVerticies.size(); i++)
-			{
-				if (i > vIntersectingVerticiesIndicies[0] && i <= vIntersectingVerticiesIndicies[1])
-				{
-					Rotate(a.angle, a.vRawVerticies[i], vertToAdd);
-					vVertices1.push_back(vertToAdd);
-
-					if (i == vIntersectingVerticiesIndicies[1])
-					{
-						vVertices1.push_back(vIntersections[0]);
-						vVertices2.push_back(vIntersections[0]);
-					}
-				}
-				else
-				{
-					Rotate(a.angle, a.vRawVerticies[i], vertToAdd);
-					vVertices2.push_back(vertToAdd);
-
-					if (i == vIntersectingVerticiesIndicies[0])
-					{
-						vVertices1.push_back(vIntersections[1]);
-						vVertices2.push_back(vIntersections[1]);
-					}
-				}
-			}
-
-			// Make new center
-			for (auto& v : vVertices1)
-			{
-				averageVertexPosition1 += v;
-			}
-
-			for (auto& v : vVertices2)
-			{
-				averageVertexPosition2 += v;
-			}
-
-			averageVertexPosition1 /= vVertices1.size();
-			averageVertexPosition2 /= vVertices2.size();
-
-			for (auto& v : vVertices1)
-			{
-				v -= averageVertexPosition1;
-			}
-
-			for (auto& v : vVertices2)
-			{
-				v -= averageVertexPosition2;
-			}
-
-			olc::vf2d newPosition1 = a.position + averageVertexPosition1;
-			olc::vf2d newPosition2 = a.position + averageVertexPosition2;
-
-			olc::vf2d newVelocity1 = 0.1f * (newPosition1 - newPosition2) + a.velocity;
-			olc::vf2d newVelocity2 = 0.1f * (newPosition2 - newPosition1) + a.velocity;
-
-			newAsteroids.push_back({ newPosition2, newVelocity2, 0, vVertices2 });
-
-			a.position = newPosition1;
-			a.angle = 0;
-			a.velocity = newVelocity1;
-			a.vRawVerticies = vVertices1;
-			a.CalculateMass();
-		}*/
 	}
 
 	void ProcessVerticiesForCollision(SpaceObject& obj)

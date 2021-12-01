@@ -103,6 +103,7 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 
 			for (int i2 = 0; i2 < poly2->vProcessedVerticies.size(); i2++)
 			{
+				int poly2Size = poly2->vProcessedVerticies[i2].size();
 
 				// Check diagonals of this polygon...
 				for (int p = 0; p < poly1->vProcessedVerticies[i1].size(); p++)
@@ -119,7 +120,7 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 					for (int q = 0; q < poly2->vProcessedVerticies[i2].size(); q++)
 					{
 						olc::vf2d line_r2s = poly2->vProcessedVerticies[i2][q];
-						olc::vf2d line_r2e = poly2->vProcessedVerticies[i2][(q + 1) % poly2->vProcessedVerticies[i2].size()];
+						olc::vf2d line_r2e = poly2->vProcessedVerticies[i2][(q + 1) % poly2Size];
 
 						// Standard "off the shelf" line segment intersection
 						float h = (line_r2e.x - line_r2s.x) * (line_r1s.y - line_r1e.y) - (line_r1s.x - line_r1e.x) * (line_r2e.y - line_r2s.y);
