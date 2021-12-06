@@ -7,6 +7,7 @@
 #include "SpaceObject.h"
 #include "ParticleSystem.h"
 #include "Laser.h"
+#include "BlackHole.h"
 #include "DelayManager.h"
 #include "KeyCharMap.h"
 using namespace std;
@@ -34,6 +35,7 @@ private:
 #pragma region References
 	vector<SpaceObject> vecAsteroids;
 	vector<Laser> vecLasers;
+	vector<BlackHole> vecBlackHoles;
 	ParticleSystem particleSystem;
 	DelayManager delayManager;
 	SpaceObject player;
@@ -62,8 +64,6 @@ private:
 #pragma endregion
 	
 	bool bDebugSkipTitleScreen = false;
-
-
 
 
 	vector<olc::vf2d> vecModelAsteroid;
@@ -137,9 +137,8 @@ public:
 
 		for (int i = 0; i < 4; i++)
 		{
-			vecAsteroids.push_back({ {(float)rand(),
-					(float)rand()},
-					{(float)rand() / RAND_MAX * 8.0f, (float)rand() / RAND_MAX * 8.0f},
+			vecAsteroids.push_back({ {(float)(rand() % ScreenWidth()), (float)(rand() % ScreenHeight())},
+					{(float)rand() / RAND_MAX * 6.0f, (float)rand() / RAND_MAX * 6.0f},
 					(float)rand() / RAND_MAX * 3.14f, vecModelAsteroid,
 					olc::YELLOW });
 		}
@@ -191,6 +190,7 @@ public:
 	{
 		vecAsteroids.clear();
 		vecLasers.clear();
+		vecBlackHoles.clear();
 
 		float angle = (float)rand() / RAND_MAX * 3.14f;
 		olc::vf2d velocity = olc::vf2d(sin(angle), -cos(angle)) * 25;
@@ -304,14 +304,25 @@ public:
 		delayManager.Update(fElapsedTime, type);
 
 		// Shoot laser
-		if (GetKey(olc::SPACE).bPressed)
+		if (GetKey(olc::SPACE).bPressed) {
 			ShootLaser();
+
+			// There is a chance to spawn a black hole when shooting
+			float chance = nLevel * 0.05f;
+			if ((float)rand() / RAND_MAX < chance)
+				SpawnBlackHole();
+		}
 	}
 
 	void UpdateEntities(float fElapsedTime)
 	{
 		DestroyDeadEntities();
-		fElapsedTime = fElapsedTime * 1;
+
+		for (auto& hole : vecBlackHoles) {
+			hole.Update(fElapsedTime);
+			hole.Attract(player, fElapsedTime);
+		}
+
 		player.Update(fElapsedTime);
 		player.CalculateVerticiesWorldSpace();
 		ProcessVerticiesForCollision(player);
@@ -320,6 +331,9 @@ public:
 		// Update asteroids position and velocity
 		for (auto& a : vecAsteroids)
 		{
+			for (auto& hole : vecBlackHoles)
+				hole.Attract(a, fElapsedTime);
+
 			a.Update(fElapsedTime);
 			a.angle += 0.1f * fElapsedTime;
 			WrapCoordinates(a.position, a.position);
@@ -360,6 +374,13 @@ public:
 
 	void DestroyDeadEntities()
 	{
+		// Remove black holes with no time left
+		for (int i = vecBlackHoles.size() - 1; i >= 0; i--)
+		{
+			if (vecBlackHoles[i].isDead())
+				vecBlackHoles.erase(vecBlackHoles.begin() + i);
+		}
+
 		// Remove lasers with no time left
 		for (int i = vecLasers.size() - 1; i >= 0; i--)
 		{
@@ -382,6 +403,13 @@ public:
 
 	void DrawEntities()
 	{
+		// Draw black holes
+		for (auto& h : vecBlackHoles)
+			for (int i = 0; i < h.GetSize(); i++)
+			{
+				DrawCircle(h.position, i, h.color * sin(h.GetRemainingLifeTime() + i));
+			}
+
 		// Draw asteroids
 		for (auto& a : vecAsteroids)
 			DrawWireFrameModel(a.vWorldVerticies, olc::vf2d(), 0, 1, a.color);
@@ -471,7 +499,8 @@ public:
 		SpawnAsteroids(min(nLevel, 5));
 	}
 
-	void SpawnAsteroids(int amount) {
+	void SpawnAsteroids(int amount)
+	{
 		
 		float radius = 10 * amount + nAsteroidSize * 2;
 
@@ -502,15 +531,26 @@ public:
 			float xPos = player.position.x + cos(angle) * radius;
 			float yPos = player.position.y + sin(angle) * radius;
 
-			//float xPos = 20;
-			//float yPos = 20;
-
 			vecAsteroids.push_back({ {xPos,
 					yPos},
 					{8.0f * vyUnit * nLevel, 8.0f * vxUnit * nLevel},
 					0.0f, vecModelAsteroid,
 					olc::YELLOW });
 		}
+	}
+
+	void SpawnBlackHole()
+	{
+		float width = ScreenWidth();
+		float height = ScreenHeight();
+
+		float size = (float)rand() / RAND_MAX * 15 + 5;
+		float duration = (float)rand() / RAND_MAX * 15 + 5;
+
+		// Spawn asteroid not on the edge
+		vecBlackHoles.push_back({ olc::vf2d((ScreenWidth() - size * 2) * ((float)rand() / RAND_MAX) + size, (ScreenHeight() - size * 2) * ((float)rand() / RAND_MAX) + size),
+			size,
+			duration });
 	}
 
 	void ShootLaser()
@@ -524,25 +564,6 @@ public:
 
 		olc::vf2d lineDirection = vEndPos - player.position;
 		lineDirection = lineDirection.norm();
-
-		// Old model. No good!
-		// 1 For every asteroid
-		// 2 Find last and current vertex
-		// 3 Rotate and wrap them
-		// 4 Wrap the other vertex or current vertex based on where the laser ends if they don't have the same wrap. pfew!
-		// 5 Check if lazer intersects the line between the verts
-		// if only hit one line
-		// 6 Wrap laser around
-		// 7 Repeat step 2 through 5 with the wrapped laser
-		// 8 Make new verts
-		// 9 Stich asteroids together from new verts
-		// 10 Two astoroids are built!
-		//
-		// New model. Better!
-		// For every asteroid
-		// Check hits against every transformed vertex
-		// Translate transformed verticies to raw verticies
-		//  
 
 		// For every asteroid O(N)
 		for (auto& a : vecAsteroids)
@@ -582,7 +603,6 @@ public:
 				// For every processed vertex. Check if there is an intersection and where it is
 				for (int vertIndex = 0; vertIndex < processedVertCount; vertIndex++)
 				{
-					// Possibly do some optimization. AABB
 					if (LineLineIntersect(a.vProcessedVerticies[listIndex][vertIndex], a.vProcessedVerticies[listIndex][(vertIndex + 1) % processedVertCount], player.position, vEndPos, firstIntersection)) {
 						// Intersection is in wrapped world space. Transform to world space
 						firstIntersection += a.position - a.vWorldPositions[listIndex];
@@ -608,7 +628,6 @@ public:
 				olc::vf2d vNewStartPos = firstIntersection - lineDirection * 1000;
 				olc::vf2d vNewEndPos = firstIntersection + lineDirection * 1000;
 
-				// TODO: figure out index formats. whatever that means. basically translate from 
 				if (LineLineIntersect(a.vWorldVerticies[vertIndex], a.vWorldVerticies[(vertIndex + 1) % worldVertCount], vNewStartPos, vNewEndPos, secondIntersection)) {
 					secondIntersectionIndex = vertIndex;
 					break;
@@ -624,33 +643,32 @@ public:
 			vector<olc::vf2d> vVertices1;
 			vector<olc::vf2d> vVertices2;
 
-			// Swap. Because it works if we do.
+			// Swap so that the first intersection index is always smaller than the second index
 			if (firstIntersectionIndex > secondIntersectionIndex) {
-				int tempIndex = firstIntersectionIndex;
-				firstIntersectionIndex = secondIntersectionIndex;
-				secondIntersectionIndex = tempIndex;
-
-				olc::vf2d tempVert = firstIntersection;
-				firstIntersection = secondIntersection;
-				secondIntersection = tempVert;
+				swap(firstIntersectionIndex, secondIntersectionIndex);
+				swap(firstIntersection, secondIntersection);
 			}
 
+			// Split vertecies into two vectors based on whether they between the first and second intersection or outside
 			for (int i = 0; i < worldVertCount; i++)
 			{
+				// The index is between first intersection (exclusive) and second intersection (inclusive)
 				if (i > firstIntersectionIndex && i <= secondIntersectionIndex)
 				{
 					vVertices1.push_back(a.vWorldVerticies[i]);
 
+					// Add verticies where the intersection lies
 					if (i == secondIntersectionIndex)
 					{
 						vVertices1.push_back(secondIntersection);
 						vVertices2.push_back(secondIntersection);
 					}
 				}
-				else
+				else // The index is outside first intersection (inclusive) and second intersection (exclusive)
 				{
 					vVertices2.push_back(a.vWorldVerticies[i]);
 
+					// Add verticies where the intersection lies
 					if (i == firstIntersectionIndex)
 					{
 						vVertices1.push_back(firstIntersection);
@@ -673,6 +691,7 @@ public:
 			averageVertexPosition1 /= vVertices1.size();
 			averageVertexPosition2 /= vVertices2.size();
 
+			// Transform vertex position from global to local space
 			for (auto& v : vVertices1)
 			{
 				v -= averageVertexPosition1;
@@ -683,9 +702,11 @@ public:
 				v -= averageVertexPosition2;
 			}
 
+			// New velocity is the old plus a velocity opposite the cut
 			olc::vf2d newVelocity1 = 0.5f * (averageVertexPosition1 - averageVertexPosition2) + a.velocity;
 			olc::vf2d newVelocity2 =  0.5f * (averageVertexPosition2 - averageVertexPosition1) + a.velocity;
 
+			// Create new asteroid
 			SpaceObject newAsteroid = { averageVertexPosition2, newVelocity2, 0, vVertices2, olc::YELLOW };
 
 			if (newAsteroid.mass <= nAsteroidBreakMass)
@@ -696,7 +717,7 @@ public:
 
 			newAsteroids.push_back(newAsteroid);
 
-
+			// Addjust old asteroid
 			a.position = averageVertexPosition1;
 			a.color = olc::YELLOW;
 			a.angle = 0;
@@ -729,6 +750,7 @@ public:
 		if (vertCount < 2)
 			return;
 
+		// Reset values
 		obj.vProcessedVerticies.clear();
 		obj.vProcessedVerticiesRawIndicies.clear();
 		obj.vWorldPositions.clear();
@@ -743,9 +765,8 @@ public:
 		int currentVertIndex;
 		int nextVertIndex;
 
-		// Index of world wraps
-		int worldPosIndex = 0;
-		int lastWorldPosIndex;
+		int worldWrapIndex = 0;
+		int lastWorldWrapIndex;
 
 		for (int i = 1; i < vertCount + 1; i++)
 		{
@@ -763,18 +784,18 @@ public:
 			currentWrap = currentWrap - currentVert;
 
 			// If current or next or previous with wrap is not added to map, add it
-			lastWorldPosIndex = worldPosIndex;
-			worldPosIndex = obj.vWorldPositions.size();
+			lastWorldWrapIndex = worldWrapIndex;
+			worldWrapIndex = obj.vWorldPositions.size();
 			for (int j = 0; j < obj.vWorldPositions.size(); j++)
 			{
 				if (currentWrap + obj.position == obj.vWorldPositions[j]) {
-					worldPosIndex = j;
+					worldWrapIndex = j;
 					break;
 				}
 			}
 
 			// Not found
-			if (worldPosIndex == obj.vWorldPositions.size()) {
+			if (worldWrapIndex == obj.vWorldPositions.size()) {
 
 				obj.vWorldPositions.push_back(currentWrap + obj.position);
 				obj.vProcessedVerticiesRawIndicies.push_back({ lastVertIndex, currentVertIndex, nextVertIndex });
@@ -789,15 +810,15 @@ public:
 
 			// Found. Add last current and last vert if not already found in vector
 
-			//// Push last and next vertex if not already in the vector
+			// Push last and next vertex if not already in the vector
 			bool lastFound = true;
 			bool foundNext = false;
-			int size = obj.vProcessedVerticies[worldPosIndex].size();
+			int size = obj.vProcessedVerticies[worldWrapIndex].size();
 
 			// Avoid extra verticies
 			if (i >= vertCount - 1) {
 				for (int j = 0; j < size; j++) {
-					if (obj.vProcessedVerticies[worldPosIndex][j] == (nextVert + currentWrap)) {
+					if (obj.vProcessedVerticies[worldWrapIndex][j] == (nextVert + currentWrap)) {
 						foundNext = true;
 						break;
 					}
@@ -805,7 +826,7 @@ public:
 				if (i == vertCount) {
 					lastFound = false;
 					for (int j = 0; j < size; j++) {
-						if (obj.vProcessedVerticies[worldPosIndex][j] == (lastVert + currentWrap)) {
+						if (obj.vProcessedVerticies[worldWrapIndex][j] == (lastVert + currentWrap)) {
 							lastFound = true;
 							break;
 						}
@@ -813,19 +834,19 @@ public:
 				}
 			}
 
-			if (lastWorldPosIndex != worldPosIndex) {
-				obj.vProcessedVerticies[worldPosIndex].push_back(currentVert + currentWrap);
-				obj.vProcessedVerticiesRawIndicies[worldPosIndex].push_back({ currentVertIndex });
+			if (lastWorldWrapIndex != worldWrapIndex) {
+				obj.vProcessedVerticies[worldWrapIndex].push_back(currentVert + currentWrap);
+				obj.vProcessedVerticiesRawIndicies[worldWrapIndex].push_back({ currentVertIndex });
 			}
 
 			if (!lastFound) {
-				obj.vProcessedVerticies[worldPosIndex].push_back(lastVert + currentWrap);
-				obj.vProcessedVerticiesRawIndicies[worldPosIndex].push_back({ lastVertIndex });
+				obj.vProcessedVerticies[worldWrapIndex].push_back(lastVert + currentWrap);
+				obj.vProcessedVerticiesRawIndicies[worldWrapIndex].push_back({ lastVertIndex });
 			}
 
 			if (!foundNext) {
-				obj.vProcessedVerticies[worldPosIndex].push_back(nextVert + currentWrap);
-				obj.vProcessedVerticiesRawIndicies[worldPosIndex].push_back({ nextVertIndex });
+				obj.vProcessedVerticies[worldWrapIndex].push_back(nextVert + currentWrap);
+				obj.vProcessedVerticiesRawIndicies[worldWrapIndex].push_back({ nextVertIndex });
 			}
 
 

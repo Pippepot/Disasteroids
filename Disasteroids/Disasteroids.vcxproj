@@ -141,6 +141,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="BlackHole.cpp" />
     <ClCompile Include="DelayManager.cpp" />
     <ClCompile Include="Disasteroids.cpp" />
     <ClCompile Include="Entity.cpp" />
@@ -150,6 +151,7 @@
     <ClCompile Include="SpaceObject.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BlackHole.h" />
     <ClInclude Include="DelayManager.h" />
     <ClInclude Include="Entity.h" />
     <ClInclude Include="KeyCharMap.h" />
