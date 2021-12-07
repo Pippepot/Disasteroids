@@ -13,7 +13,7 @@ BlackHole::BlackHole(olc::vf2d pos, float size, float duration)
 void BlackHole::Attract(SpaceObject& obj, float fElapsedTime)
 {
 	olc::vf2d dir = position - obj.position;
-	float dirSize = std::max(dir.mag() - obj.boundingCircleRadius, 7.0f);
+	float dirSize = std::max(dir.mag() - obj.boundingCircleRadius, 5.0f);
 	obj.velocity += dir.norm() * 20 * currentSize * currentSize / (dirSize * dirSize) * fElapsedTime;
 }
 

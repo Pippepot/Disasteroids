@@ -25,11 +25,19 @@ public:
 
 private:
 
-	// Variables
 #pragma region Asteroid Settings
 	const int nAsteroidSize = 16;
 	const float nAsteroidBreakMass = 8.0f;
 	const float nAsteroidDisintegrateMass = 2.0f;
+#pragma endregion
+
+#pragma region Black Hole Settings
+	const float nHoleBaseSpawnFactor = 0.02f;
+	const float nHoleLevelSpawnFactor = 0.04f;
+	const float nHoleMaxExtraSize = 15.0f;
+	const float nHoleBaseSize = 5.0f;
+	const float nHoleMaxExtraDuration = 15.0f;
+	const float nHoleBaseDuration = 5.0f;
 #pragma endregion
 
 #pragma region References
@@ -286,7 +294,7 @@ public:
 		DelayManager::delayTypes type = DelayManager::delayTypes::throttle;
 		if (GetKey(olc::UP).bHeld || GetKey(olc::W).bHeld) {
 
-			olc::vf2d direction = olc::vf2d(sin(player.angle), -cos(player.angle)) * 20.0 * fElapsedTime;
+			olc::vf2d direction = olc::vf2d(sin(player.angle), -cos(player.angle)) * 25.0 * fElapsedTime;
 			player.velocity += direction;
 
 			if (!delayManager.OnCooldown(type)) {
@@ -308,7 +316,7 @@ public:
 			ShootLaser();
 
 			// There is a chance to spawn a black hole when shooting
-			float chance = nLevel * 0.05f;
+			float chance = nLevel * nHoleLevelSpawnFactor + nHoleBaseSpawnFactor;
 			if ((float)rand() / RAND_MAX < chance)
 				SpawnBlackHole();
 		}
@@ -547,8 +555,8 @@ public:
 		float width = ScreenWidth();
 		float height = ScreenHeight();
 
-		float size = (float)rand() / RAND_MAX * 15 + 5;
-		float duration = (float)rand() / RAND_MAX * 15 + 5;
+		float size = (float)rand() / RAND_MAX * nHoleMaxExtraSize + nHoleBaseSize;
+		float duration = (float)rand() / RAND_MAX * nHoleMaxExtraDuration + nHoleBaseDuration;
 
 		// Spawn asteroid not on the edge
 		vecBlackHoles.push_back({ olc::vf2d((ScreenWidth() - size * 2) * ((float)rand() / RAND_MAX) + size, (ScreenHeight() - size * 2) * ((float)rand() / RAND_MAX) + size),
