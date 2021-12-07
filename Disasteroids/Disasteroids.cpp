@@ -406,13 +406,16 @@ public:
 		// Draw black holes
 		for (auto& h : vecBlackHoles)
 			for (int i = 0; i < h.GetSize(); i++)
-			{
 				DrawCircle(h.position, i, h.color * sin(h.GetRemainingLifeTime() + i));
-			}
 
 		// Draw asteroids
-		for (auto& a : vecAsteroids)
+		for (auto& a : vecAsteroids) {
 			DrawWireFrameModel(a.vWorldVerticies, olc::vf2d(), 0, 1, a.color);
+			//for (auto& p : a.vProcessedVerticies) {
+			//	DrawWireFrameModel(p, olc::vf2d(), 0, 1, olc::GREEN);
+
+			//}
+		}
 
 		// Draw lasers
 		for (auto& l : vecLasers)
@@ -653,7 +656,7 @@ public:
 			for (int i = 0; i < worldVertCount; i++)
 			{
 				// The index is between first intersection (exclusive) and second intersection (inclusive)
-				if (i > firstIntersectionIndex && i <= secondIntersectionIndex)
+				if (i > firstIntersectionIndex && i <= secondIntersectionIndex) // f size - 1 s something
 				{
 					vVertices1.push_back(a.vWorldVerticies[i]);
 
@@ -835,8 +838,17 @@ public:
 			}
 
 			if (lastWorldWrapIndex != worldWrapIndex) {
-				obj.vProcessedVerticies[worldWrapIndex].push_back(currentVert + currentWrap);
-				obj.vProcessedVerticiesRawIndicies[worldWrapIndex].push_back({ currentVertIndex });
+				for (int j = 0; j < size; j++) {
+					if (obj.vProcessedVerticies[worldWrapIndex][j] == (currentVert + currentWrap)) {
+						break;
+					}
+					if (j == size - 1) {
+						obj.vProcessedVerticies[worldWrapIndex].push_back(currentVert + currentWrap);
+						obj.vProcessedVerticiesRawIndicies[worldWrapIndex].push_back({ currentVertIndex });
+					}
+
+				} 
+
 			}
 
 			if (!lastFound) {
@@ -896,7 +908,14 @@ public:
 		{
 			int j = (i + 1);
 			DrawLine(vecTransformedCoordinates[i % verts], vecTransformedCoordinates[j % verts], p);
-			//Draw(vecTransformedCoordinates[i % verts].x, vecTransformedCoordinates[i % verts].y, olc::RED);
+			//olc::Pixel color = olc::CYAN;
+			//if (i % verts == 0)
+			//	color = olc::RED;
+			//if (i % verts == 1)
+			//	color = olc::DARK_RED;
+			//if (i == 2)
+			//	color = olc::VERY_DARK_RED;
+			//Draw(vecTransformedCoordinates[i % verts].x, vecTransformedCoordinates[i % verts].y, color);
 		}
 		//Draw(vecTransformedCoordinates[1].x, vecTransformedCoordinates[1].y, olc::RED);
 	}
