@@ -19,7 +19,7 @@ void ParticleSystem::AddParticlesFromVerts(std::vector<olc::vf2d> verts, olc::vf
 
 void ParticleSystem::AddParticleFromVerts(olc::vf2d position, olc::vf2d force, float duration, olc::Pixel color)
 {
-	duration = duration + (float)rand() / RAND_MAX * 0.8f;
+	duration = duration + (float)rand() / (float)RAND_MAX * 0.8f;
 	AddParticle({ position, force, duration, color });
 }
 

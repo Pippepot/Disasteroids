@@ -127,27 +127,27 @@ public:
 	{
 		olc::SOUND::InitialiseAudio(44100, 1, 8, 512);
 
-		//musicSample = olc::SOUND::LoadAudioSample("Audio/SampleA.wav");
-		laserShootSample = olc::SOUND::LoadAudioSample("Audio/Laser2.wav");
-		asteroidHitSample = olc::SOUND::LoadAudioSample("Audio/AsteroidHit.wav");
-		asteroidBreakSample = olc::SOUND::LoadAudioSample("Audio/AsteroidBreak5.wav");
-		playerBreakSample = olc::SOUND::LoadAudioSample("Audio/PlayerBreak.wav");
-		playerThrustSample = olc::SOUND::LoadAudioSample("Audio/PlayerThrust.wav");
-		levelCompleteSample = olc::SOUND::LoadAudioSample("Audio/LevelComplete.wav");
+		//musicSample = olc::SOUND::LoadAudioSample("./assets/audio/sampleA.wav");
+		laserShootSample = olc::SOUND::LoadAudioSample("./assets/audio/laser2.wav");
+		asteroidHitSample = olc::SOUND::LoadAudioSample("./assets/audio/asteroidHit.wav");
+		asteroidBreakSample = olc::SOUND::LoadAudioSample("./assets/audio/asteroidBreak5.wav");
+		playerBreakSample = olc::SOUND::LoadAudioSample("./assets/audio/playerBreak.wav");
+		playerThrustSample = olc::SOUND::LoadAudioSample("./assets/audio/playerThrust.wav");
+		levelCompleteSample = olc::SOUND::LoadAudioSample("./assets/audio/levelComplete.wav");
 
 		//olc::SOUND::PlaySample(musicSample);
 	}
 
 	void InitializeTitleScreen()
 	{
-		olc::Sprite* titleSprite = new olc::Sprite("./D6.png");
+		olc::Sprite* titleSprite = new olc::Sprite("./assets/logo.png");
 		titleDecal = new olc::Decal(titleSprite);
 
 		for (int i = 0; i < 4; i++)
 		{
 			vecAsteroids.push_back({ {(float)(rand() % ScreenWidth()), (float)(rand() % ScreenHeight())},
-					{(float)rand() / RAND_MAX * 6.0f, (float)rand() / RAND_MAX * 6.0f},
-					(float)rand() / RAND_MAX * 3.14f, vecModelAsteroid,
+					{(float)rand() / (float)RAND_MAX * 6.0f, (float)rand() / (float)RAND_MAX * 6.0f},
+					(float)rand() / (float)RAND_MAX * 3.14f, vecModelAsteroid,
 					olc::YELLOW });
 		}
 
@@ -200,10 +200,10 @@ public:
 		vecLasers.clear();
 		vecBlackHoles.clear();
 
-		float angle = (float)rand() / RAND_MAX * 3.14f;
+		float angle = (float)rand() / (float)RAND_MAX * 3.14f;
 		olc::vf2d velocity = olc::vf2d(sin(angle), -cos(angle)) * 25;
 
-		player = SpaceObject(olc::vf2d(ScreenWidth() * ((float)rand() / RAND_MAX), ScreenHeight() * ((float)rand() / RAND_MAX)),
+		player = SpaceObject(olc::vf2d(ScreenWidth() * ((float)rand() / (float)RAND_MAX), ScreenHeight() * ((float)rand() / (float)RAND_MAX)),
 			velocity,
 			angle,
 			{
@@ -317,7 +317,7 @@ public:
 
 			// There is a chance to spawn a black hole when shooting
 			float chance = nLevel * nHoleLevelSpawnFactor + nHoleBaseSpawnFactor;
-			if ((float)rand() / RAND_MAX < chance)
+			if ((float)rand() / (float)RAND_MAX < chance)
 				SpawnBlackHole();
 		}
 	}
@@ -555,11 +555,11 @@ public:
 		float width = ScreenWidth();
 		float height = ScreenHeight();
 
-		float size = (float)rand() / RAND_MAX * nHoleMaxExtraSize + nHoleBaseSize;
-		float duration = (float)rand() / RAND_MAX * nHoleMaxExtraDuration + nHoleBaseDuration;
+		float size = (float)rand() / (float)RAND_MAX * nHoleMaxExtraSize + nHoleBaseSize;
+		float duration = (float)rand() / (float)RAND_MAX * nHoleMaxExtraDuration + nHoleBaseDuration;
 
 		// Spawn asteroid not on the edge
-		vecBlackHoles.push_back({ olc::vf2d((ScreenWidth() - size * 2) * ((float)rand() / RAND_MAX) + size, (ScreenHeight() - size * 2) * ((float)rand() / RAND_MAX) + size),
+		vecBlackHoles.push_back({ olc::vf2d((ScreenWidth() - size * 2) * ((float)rand() / (float)RAND_MAX) + size, (ScreenHeight() - size * 2) * ((float)rand() / (float)RAND_MAX) + size),
 			size,
 			duration });
 	}
