@@ -32,7 +32,7 @@ private:
 #pragma endregion
 
 #pragma region Black Hole Settings
-	const float nHoleBaseSpawnFactor = 0.02f;
+	const float nHoleBaseSpawnFactor = 0.01f;
 	const float nHoleLevelSpawnFactor = 0.04f;
 	const float nHoleMaxExtraSize = 15.0f;
 	const float nHoleBaseSize = 5.0f;
@@ -62,7 +62,7 @@ private:
 #pragma endregion
 
 #pragma region Audio
-	int musicSample; // Missing
+	int introSample;
 	int laserShootSample;
 	int asteroidHitSample;
 	int asteroidBreakSample;
@@ -127,20 +127,20 @@ public:
 	{
 		olc::SOUND::InitialiseAudio(44100, 1, 8, 512);
 
-		//musicSample = olc::SOUND::LoadAudioSample("./assets/audio/sampleA.wav");
-		laserShootSample = olc::SOUND::LoadAudioSample("./assets/audio/laser2.wav");
+		introSample = olc::SOUND::LoadAudioSample("./assets/audio/introExplotion.wav");
+		laserShootSample = olc::SOUND::LoadAudioSample("./assets/audio/laser.wav");
 		asteroidHitSample = olc::SOUND::LoadAudioSample("./assets/audio/asteroidHit.wav");
-		asteroidBreakSample = olc::SOUND::LoadAudioSample("./assets/audio/asteroidBreak5.wav");
+		asteroidBreakSample = olc::SOUND::LoadAudioSample("./assets/audio/asteroidBreak.wav");
 		playerBreakSample = olc::SOUND::LoadAudioSample("./assets/audio/playerBreak.wav");
 		playerThrustSample = olc::SOUND::LoadAudioSample("./assets/audio/playerThrust.wav");
 		levelCompleteSample = olc::SOUND::LoadAudioSample("./assets/audio/levelComplete.wav");
 
-		//olc::SOUND::PlaySample(musicSample);
+		olc::SOUND::PlaySample(introSample);
 	}
 
 	void InitializeTitleScreen()
 	{
-		olc::Sprite* titleSprite = new olc::Sprite("./assets/logo.png");
+		olc::Sprite* titleSprite = new olc::Sprite("./assets/title.png");
 		titleDecal = new olc::Decal(titleSprite);
 
 		for (int i = 0; i < 4; i++)
@@ -275,7 +275,11 @@ public:
 		UpdateEntities(fElapsedTime);
 
 		// Draw score
-		DrawString(2, 2, "SCORE: " + to_string(nScore));
+		if (!player.isDead())
+			DrawString(2, 2, "SCORE: " + to_string(nScore));
+		else
+			DrawString(ScreenWidth() / 4, ScreenHeight() / 2 - 8, "SCORE: " + to_string(nScore), olc::WHITE, 2);
+
 
 		HandleLevelSwitch(fElapsedTime);
 
