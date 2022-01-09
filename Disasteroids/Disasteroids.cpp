@@ -27,8 +27,8 @@ private:
 
 #pragma region Asteroid Settings
 	const int nAsteroidSize = 16;
-	const float nAsteroidBreakMass = 8.0f;
-	const float nAsteroidDisintegrateMass = 2.0f;
+	const float nAsteroidBreakMass = 100.0f;
+	const float nAsteroidDisintegrateMass = 10.0f;
 #pragma endregion
 
 #pragma region Black Hole Settings
@@ -147,7 +147,7 @@ public:
 		{
 			vecAsteroids.push_back({ {(float)(rand() % ScreenWidth()), (float)(rand() % ScreenHeight())},
 					{(float)rand() / (float)RAND_MAX * 6.0f, (float)rand() / (float)RAND_MAX * 6.0f},
-					(float)rand() / (float)RAND_MAX * 3.14f, vecModelAsteroid,
+					(float)rand() / (float)RAND_MAX * 3.14f, (float)rand() / (float)RAND_MAX * 0.5f, vecModelAsteroid,
 					olc::YELLOW });
 		}
 
@@ -206,6 +206,7 @@ public:
 		player = SpaceObject(olc::vf2d(ScreenWidth() * ((float)rand() / (float)RAND_MAX), ScreenHeight() * ((float)rand() / (float)RAND_MAX)),
 			velocity,
 			angle,
+			0,
 			{
 			{ 0.0f, -5.5f },
 			{ -2.5f, 2.5f },
@@ -347,7 +348,6 @@ public:
 				hole.Attract(a, fElapsedTime);
 
 			a.Update(fElapsedTime);
-			a.angle += 0.1f * fElapsedTime;
 			WrapCoordinates(a.position, a.position);
 			a.CalculateVerticiesWorldSpace();
 			ProcessVerticiesForCollision(a);
@@ -410,7 +410,6 @@ public:
 				vecAsteroids.erase(vecAsteroids.begin() + i);
 			}
 		}
-
 	}
 
 	void DrawEntities()
@@ -549,7 +548,7 @@ public:
 			vecAsteroids.push_back({ {xPos,
 					yPos},
 					{8.0f * vyUnit * nLevel, 8.0f * vxUnit * nLevel},
-					0.0f, vecModelAsteroid,
+					0.0f, (float)rand() / (float)RAND_MAX * 0.5f, vecModelAsteroid,
 					olc::YELLOW });
 		}
 	}
@@ -722,7 +721,7 @@ public:
 			olc::vf2d newVelocity2 =  0.5f * (averageVertexPosition2 - averageVertexPosition1) + a.velocity;
 
 			// Create new asteroid
-			SpaceObject newAsteroid = { averageVertexPosition2, newVelocity2, 0, vVertices2, olc::YELLOW };
+			SpaceObject newAsteroid = { averageVertexPosition2, newVelocity2, 0, a.angularVelocity, vVertices2, olc::YELLOW };
 
 			if (newAsteroid.mass <= nAsteroidBreakMass)
 				newAsteroid.color = olc::GREY;

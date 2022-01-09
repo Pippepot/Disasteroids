@@ -5,7 +5,7 @@ class SpaceObject :
 {
 public:
 	SpaceObject() = default;
-	SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<olc::vf2d> verts, olc::Pixel col);
+	SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, float angVel, std::vector<olc::vf2d> verts, olc::Pixel col);
 	bool ShapeOverlap_DIAGS_STATIC(SpaceObject& other);
 	virtual void Update(float fElapsedTime) override;
 	void Kill();
@@ -13,6 +13,8 @@ public:
 	void CalculateVerticiesWorldSpace();
 	olc::vf2d velocity;
 	float angle;
+	float angularVelocity;
+	float inertiaTensor;
 	float mass;
 	std::vector<olc::vf2d> vRawVerticies;	// Verticies in local space
 	std::vector<olc::vf2d> vWorldVerticies;	// Verticies in world space

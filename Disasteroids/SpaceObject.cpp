@@ -1,11 +1,12 @@
 #include "SpaceObject.h"
 #pragma warning( disable : 26451 )
 
-SpaceObject::SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<olc::vf2d> verts, olc::Pixel col)
+SpaceObject::SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, float angVel, std::vector<olc::vf2d> verts, olc::Pixel col)
 {
 	position = pos;
 	velocity = vel;
 	angle = ang;
+	angularVelocity = angVel;
 	vRawVerticies = verts;
 	int vertSize = verts.size();
 	vWorldVerticies.resize(vertSize);
@@ -25,6 +26,7 @@ SpaceObject::SpaceObject(olc::vf2d pos, olc::vf2d vel, float ang, std::vector<ol
 void SpaceObject::Update(float fElapsedTime)
 {
 	position += velocity * fElapsedTime;
+	angle += angularVelocity * fElapsedTime;
 }
 
 void SpaceObject::Kill()
@@ -34,12 +36,66 @@ void SpaceObject::Kill()
 
 void SpaceObject::CalculateMass()
 {
-	mass = 0;
-	for (auto& v : vRawVerticies)
+	// Polygon mass, centroid, and inertia.
+	// Let rho be the polygon density in mass per unit area.
+	// Then:
+	// mass = rho * int(dA)
+	// centroid.x = (1/mass) * rho * int(x * dA)
+	// centroid.y = (1/mass) * rho * int(y * dA)
+	// I = rho * int((x*x + y*y) * dA)
+	//
+	// We can compute these integrals by summing all the integrals
+	// for each triangle of the polygon. To evaluate the integral
+	// for a single triangle, we make a change of variables to
+	// the (u,v) coordinates of the triangle:
+	// x = x0 + e1x * u + e2x * v
+	// y = y0 + e1y * u + e2y * v
+	// where 0 <= u && 0 <= v && u + v <= 1.
+	//
+	// We integrate u from [0,1-v] and then v from [0,1].
+	// We also need to use the Jacobian of the transformation:
+	// D = cross(e1, e2)
+	//
+	// Simplification: triangle centroid = (1/3) * (p1 + p2 + p3)
+	//
+	// The rest of the derivation is handled by computer algebra.
+	mass = 0.0f;
+	inertiaTensor = 0.0f;
+
+	// Get a reference point for forming triangles.
+	// Use the first vertex to reduce round-off errors.
+	olc::vf2d s = vRawVerticies[0];
+
+	const float k_inv3 = 1.0f / 3.0f;
+
+	for (int i = 0; i < vRawVerticies.size(); ++i)
 	{
-		mass += v.mag();
+		// Triangle vertices.
+		olc::vf2d e1 = vRawVerticies[i] - s;
+		olc::vf2d e2 = i + 1 < vRawVerticies.size() ? vRawVerticies[i + 1] - s : vRawVerticies[0] - s;
+
+		float D = abs(e1.cross(e2));
+
+		float triangleArea = 0.5f * D;
+		mass += triangleArea;
+
+		float ex1 = e1.x, ey1 = e1.y;
+		float ex2 = e2.x, ey2 = e2.y;
+
+		float intx2 = ex1 * ex1 + ex2 * ex1 + ex2 * ex2;
+		float inty2 = ey1 * ey1 + ey2 * ey1 + ey2 * ey2;
+
+		inertiaTensor += (0.25f * k_inv3 * D) * (intx2 + inty2);
 	}
-	mass /= vRawVerticies.size();
+
+	// Inertia tensor relative to the local origin (point s).
+	
+	//mass = 0;
+	//for (auto& v : vRawVerticies)
+	//{
+	//	mass += v.mag();
+	//}
+	//mass /= vRawVerticies.size();
 }
 
 
@@ -89,6 +145,9 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 
 	bool hasCollided = false;
 
+	olc::vf2d normal = olc::vd2d();
+	olc::vf2d contactPoint = olc::vd2d();
+
 	// For each polygon, for each subpolygon
 	for (int shape = 0; shape < 2; shape++)
 	{
@@ -108,9 +167,6 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 				// Check diagonals of this polygon...
 				for (int p = 0; p < poly1->vProcessedVerticies[i1].size(); p++)
 				{
-					// This boy needs to be different for every wrap
-					// This boy do be different forevery wrap now :) Still don't work tho
-					// Works now I think
 					olc::vf2d line_r1s = poly1->vWorldPositions[i1];
 					olc::vf2d line_r1e = poly1->vProcessedVerticies[i1][p];
 
@@ -131,6 +187,14 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 						{
 							displacement.x += (1.0f - t1) * (line_r1e.x - line_r1s.x);
 							displacement.y += (1.0f - t1) * (line_r1e.y - line_r1s.y);
+
+							contactPoint = line_r1e + displacement;
+							normal = line_r2e - line_r2s;
+							float tempY = normal.y;
+							normal.y = -normal.x;
+							normal.x = tempY;
+							normal = normal.norm();
+
 							hasCollided = true;
 						}
 					}
@@ -143,44 +207,41 @@ bool SpaceObject::ShapeOverlap_DIAGS_STATIC(SpaceObject& other)
 					position += directionalDisplacement;
 
 					other.position -= directionalDisplacement;
+
+					if (hasCollided)
+					{
+						// Collision impulse solver 
+						// https://www.myphysicslab.com/engine2D/collision-en.html#resting_contact
+
+						float invMass1 = 1 / poly1->mass;
+						float invMass2 = 1 / poly2->mass;
+						float invInertia1 = 1 / poly1->inertiaTensor;
+						float invInertia2 = 1 / poly2->inertiaTensor;
+
+						olc::vf2d rap = contactPoint - poly1->vWorldPositions[i1];
+						olc::vf2d rbp = contactPoint - poly2->vWorldPositions[i2];
+
+						olc::vf2d vap = poly1->velocity + olc::vf2d(-poly1->angularVelocity * rap.y, poly1->angularVelocity * rap.x);
+						olc::vf2d vbp = poly2->velocity + olc::vf2d(-poly2->angularVelocity * rbp.y, poly2->angularVelocity * rbp.x);
+
+						olc::vf2d vab = vap - vbp;
+
+						const float elasticity = 0.9f;
+						float divisor = invMass1 + invMass2 + rap.cross(normal) * rap.cross(normal) * invInertia1 + rbp.cross(normal) * rbp.cross(normal) * invInertia2;
+						float j = -(1 + elasticity) * vab.dot(normal) / divisor;
+
+						poly1->velocity += j * normal * invMass1;
+						poly2->velocity -= j * normal * invMass2;
+
+						poly1->angularVelocity += rap.cross(j * normal) * invInertia1;
+						poly2->angularVelocity -= rbp.cross(j * normal) * invInertia2;
+					}
 				}
 			}
 		}
 	}
 
-	if (hasCollided)
-	{
-		float fDistance = sqrtf((poly1->position.x - poly2->position.x) * (poly1->position.x - poly2->position.x) + (poly1->position.y - poly2->position.y) * (poly1->position.y - poly2->position.y));
 
-		// Normal
-		float nx = (poly2->position.x - poly1->position.x) / fDistance;
-		float ny = (poly2->position.y - poly1->position.y) / fDistance;
-
-		// Tangent
-		float tx = -ny;
-		float ty = nx;
-
-		// Dot product tangent
-		float dpTan1 = poly1->velocity.x * tx + poly1->velocity.y * ty;
-		float dpTan2 = poly2->velocity.x * tx + poly2->velocity.y * ty;
-
-		// Dot product Normal
-		float dpNorm1 = poly1->velocity.x * nx + poly1->velocity.y * ny;
-		float dpNorm2 = poly2->velocity.x * nx + poly2->velocity.y * ny;
-
-		// Conservation of momentum in 1D
-		float m1 = (dpNorm1 * (poly1->mass - poly2->mass) + 2.0f * poly2->mass * dpNorm2) / (poly1->mass + poly2->mass);
-		float m2 = (dpNorm2 * (poly2->mass - poly1->mass) + 2.0f * poly1->mass * dpNorm1) / (poly1->mass + poly2->mass);
-
-		//m1 = std::clamp(m1, -10.0f, 10.0f);
-		//m2 = std::clamp(m2, -10.0f, 10.0f);
-		float forceOnImpact = 0.9f; // How much force (velocity) is not lost on impact
-
-		poly1->velocity.x = tx * dpTan1 + nx * m1 * forceOnImpact;
-		poly1->velocity.y = ty * dpTan1 + ny * m1 * forceOnImpact;
-		poly2->velocity.x = tx * dpTan2 + nx * m2 * forceOnImpact;
-		poly2->velocity.y = ty * dpTan2 + ny * m2 * forceOnImpact;
-	}
 
 	return hasCollided;
 }
