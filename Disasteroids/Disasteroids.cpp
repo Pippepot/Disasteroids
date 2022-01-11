@@ -1,15 +1,19 @@
 #define OLC_PGE_APPLICATION
 #include "olcPixelGameEngine.h"
 
-#define OLC_PGEX_SOUND
-#include "olcPGEX_Sound.h"
-
 #include "SpaceObject.h"
 #include "ParticleSystem.h"
 #include "Laser.h"
 #include "BlackHole.h"
 #include "DelayManager.h"
 #include "KeyCharMap.h"
+
+#define AUDIO_LISTENER_IMPLEMENTATION
+#include "olcPGEX_AudioListener.h"
+
+#define AUDIO_SOURCE_IMPLEMENTATION
+#include "olcPGEX_AudioSource.h"
+
 using namespace std;
 
 
@@ -62,13 +66,15 @@ private:
 #pragma endregion
 
 #pragma region Audio
-	int introSample;
-	int laserShootSample;
-	int asteroidHitSample;
-	int asteroidBreakSample;
-	int playerBreakSample;
-	int playerThrustSample;
-	int levelCompleteSample;
+	olcPGEX_AudioListener AudioListener;
+	olcPGEX_AudioSource AudioSource;
+	int introSample = 0;
+	int laserShootSample = 1;
+	int asteroidHitSample = 2;
+	int asteroidBreakSample = 3;
+	int playerBreakSample = 4;
+	int playerThrustSample = 5;
+	int levelCompleteSample = 6;
 #pragma endregion
 	
 	bool bDebugSkipTitleScreen = false;
@@ -92,7 +98,7 @@ private:
 		WrapCoordinates(i.x, i.y, o.x, o.y);
 	}
 
-	virtual bool Draw(int32_t x, int32_t y, olc::Pixel p = olc::WHITE)
+	bool Draw(int32_t x, int32_t y, olc::Pixel p = olc::WHITE) override
 	{
 		float ox;
 		float oy;
@@ -125,17 +131,17 @@ public:
 
 	void InitializeAudio()
 	{
-		olc::SOUND::InitialiseAudio(44100, 1, 8, 512);
+		AudioListener.AudioSystemInit();
+		AudioSource.AudioListener = &AudioListener;
+		AudioSource.LoadAudioSample(laserShootSample, "./assets/audio/laser.wav");
+		AudioSource.LoadAudioSample(asteroidHitSample, "./assets/audio/asteroidHit.wav");
+		AudioSource.LoadAudioSample(asteroidBreakSample, "./assets/audio/asteroidBreak.wav");
+		AudioSource.LoadAudioSample(playerBreakSample, "./assets/audio/playerBreak.wav");
+		AudioSource.LoadAudioSample(playerThrustSample, "./assets/audio/playerThrust.wav");
+		AudioSource.LoadAudioSample(levelCompleteSample, "./assets/audio/levelComplete.wav");
 
-		introSample = olc::SOUND::LoadAudioSample("./assets/audio/introExplotion.wav");
-		laserShootSample = olc::SOUND::LoadAudioSample("./assets/audio/laser.wav");
-		asteroidHitSample = olc::SOUND::LoadAudioSample("./assets/audio/asteroidHit.wav");
-		asteroidBreakSample = olc::SOUND::LoadAudioSample("./assets/audio/asteroidBreak.wav");
-		playerBreakSample = olc::SOUND::LoadAudioSample("./assets/audio/playerBreak.wav");
-		playerThrustSample = olc::SOUND::LoadAudioSample("./assets/audio/playerThrust.wav");
-		levelCompleteSample = olc::SOUND::LoadAudioSample("./assets/audio/levelComplete.wav");
-
-		olc::SOUND::PlaySample(introSample);
+		AudioSource.LoadAudioSample(introSample, "./assets/audio/introExplotion.wav");
+		AudioSource.Play();
 	}
 
 	void InitializeTitleScreen()
@@ -279,7 +285,7 @@ public:
 		if (!player.isDead())
 			DrawString(2, 2, "SCORE: " + to_string(nScore));
 		else
-			DrawString(ScreenWidth() / 4, ScreenHeight() / 2 - 8, "SCORE: " + to_string(nScore), olc::WHITE, 2);
+			DrawString(ScreenWidth() / 4 - 8 * to_string(nScore).length() + 4, ScreenHeight() / 2 - 8, "SCORE: " + to_string(nScore), olc::WHITE, 2);
 
 
 		HandleLevelSwitch(fElapsedTime);
@@ -295,6 +301,8 @@ public:
 		if (GetKey(olc::LEFT).bHeld || GetKey(olc::A).bHeld)
 			player.angle -= 4.0f * fElapsedTime;
 
+		player.angularVelocity *= (1 - (fElapsedTime));
+
 		// Thrust / Acceleration
 		DelayManager::delayTypes type = DelayManager::delayTypes::throttle;
 		if (GetKey(olc::UP).bHeld || GetKey(olc::W).bHeld) {
@@ -307,7 +315,8 @@ public:
 				for (int i = 0; i < 3; i++)
 				{
 					particleSystem.AddParticleFromVerts(player.position, player.velocity + (olc::vf2d(rand(), rand()).norm() * 0.5f - direction.norm()) * 10.0f, 1.0f, olc::DARK_BLUE);
-					olc::SOUND::PlaySample(playerThrustSample);
+					AudioSource.LoadAudioSample(playerThrustSample, "");
+					AudioSource.Play();
 				}
 
 				delayManager.PutOnCooldown(type);
@@ -360,7 +369,8 @@ public:
 				if (vecAsteroids[m].ShapeOverlap_DIAGS_STATIC(player)) {
 					// Hit a big asteroid. Game over
 					if (vecAsteroids[m].mass >= nAsteroidBreakMass) {
-						olc::SOUND::PlaySample(playerBreakSample);
+						AudioSource.LoadAudioSample(playerBreakSample, "");
+						AudioSource.Play();
 						player.Kill();
 						return;
 					}
@@ -405,7 +415,8 @@ public:
 		{
 			if (vecAsteroids[i].isDead()) {
 				SpaceObject a = vecAsteroids[i];
-				olc::SOUND::PlaySample(asteroidBreakSample);
+				AudioSource.LoadAudioSample(asteroidBreakSample, "");
+				AudioSource.Play();
 				particleSystem.AddParticlesFromVerts(a.vWorldVerticies, a.position, 10, 1.0f, olc::DARK_GREY);
 				vecAsteroids.erase(vecAsteroids.begin() + i);
 			}
@@ -420,13 +431,8 @@ public:
 				DrawCircle(h.position, i, h.color * sin(h.GetRemainingLifeTime() + i));
 
 		// Draw asteroids
-		for (auto& a : vecAsteroids) {
+		for (auto& a : vecAsteroids)
 			DrawWireFrameModel(a.vWorldVerticies, olc::vf2d(), 0, 1, a.color);
-			//for (auto& p : a.vProcessedVerticies) {
-			//	DrawWireFrameModel(p, olc::vf2d(), 0, 1, olc::GREEN);
-
-			//}
-		}
 
 		// Draw lasers
 		for (auto& l : vecLasers)
@@ -468,7 +474,8 @@ public:
 		{
 			delayManager.PutOnCooldown(DelayManager::delayTypes::levelSwitch);
 			nAsteroidCountAtLevelSwitch = vecAsteroids.size();
-			olc::SOUND::PlaySample(levelCompleteSample);
+			AudioSource.LoadAudioSample(levelCompleteSample, "");
+			AudioSource.Play();
 			bSwitchingLevel = true;
 		}
 	}
@@ -569,7 +576,8 @@ public:
 
 	void ShootLaser()
 	{
-		olc::SOUND::PlaySample(laserShootSample);
+		AudioSource.LoadAudioSample(laserShootSample, "");
+		AudioSource.Play();
 
 		vector<SpaceObject> newAsteroids;
 
@@ -746,7 +754,8 @@ public:
 			if (a.mass <= nAsteroidDisintegrateMass)
 				a.Kill();
 
-			olc::SOUND::PlaySample(asteroidHitSample);
+			AudioSource.LoadAudioSample(asteroidHitSample, "");
+			AudioSource.Play();
 		}
 
 		vecLasers.push_back({ player.position, vEndPos, olc::BLUE, 1 });
@@ -992,12 +1001,6 @@ public:
 		iOut.y = p1.y + u * (p2.y - p1.y);
 
 		return true; //All OK
-	}
-
-	bool OnUserDestroy()
-	{
-		olc::SOUND::DestroyAudio();
-		return true;
 	}
 
 };

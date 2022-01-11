@@ -13,6 +13,12 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\Sound">
+      <UniqueIdentifier>{2946335e-7533-429c-aac4-0843cae7d3e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\olc">
+      <UniqueIdentifier>{f05b1152-8b89-4d06-b9e9-62b12beffe34}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Entity.cpp">
@@ -41,9 +47,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="olcPixelGameEngine.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Entity.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -65,11 +68,161 @@
     <ClInclude Include="KeyCharMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="olcPGEX_Sound.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="BlackHole.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="soloud.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_audiosource.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_bassboostfilter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_biquadresonantfilter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_bus.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_c.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_dcremovalfilter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_echofilter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_error.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_fader.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_fft.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_fftfilter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_file.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_file_hack_off.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_file_hack_on.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_filter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_flangerfilter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_freeverbfilter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_internal.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_lofifilter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_misc.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_monotone.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_noise.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_openmpt.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_queue.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_robotizefilter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_sfxr.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_speech.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_tedsid.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_thread.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_vic.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_vizsn.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_wav.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_waveshaperfilter.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="soloud_wavstream.h">
+      <Filter>Header Files\Sound</Filter>
+    </ClInclude>
+    <ClInclude Include="olcPGEX_AudioListener.h">
+      <Filter>Header Files\olc</Filter>
+    </ClInclude>
+    <ClInclude Include="olcPGEX_AudioSource.h">
+      <Filter>Header Files\olc</Filter>
+    </ClInclude>
+    <ClInclude Include="olcPixelGameEngine.h">
+      <Filter>Header Files\olc</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\title.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="assets\audio\asteroidBreak.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="assets\audio\asteroidHit.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="assets\audio\introExplotion.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="assets\audio\laser.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="assets\audio\levelComplete.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="assets\audio\playerBreak.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="assets\audio\playerThrust.wav">
+      <Filter>Resource Files</Filter>
+    </Media>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SDL2.dll" />
+    <None Include="SDL2_mixer.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="SDL2.lib" />
+    <Library Include="SDL2_mixer.lib" />
+    <Library Include="SDL2main.lib" />
+    <Library Include="soloud.lib" />
+    <Library Include="soloud_static.lib" />
   </ItemGroup>
 </Project>

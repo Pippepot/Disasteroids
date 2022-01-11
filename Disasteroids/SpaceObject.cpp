@@ -36,29 +36,7 @@ void SpaceObject::Kill()
 
 void SpaceObject::CalculateMass()
 {
-	// Polygon mass, centroid, and inertia.
-	// Let rho be the polygon density in mass per unit area.
-	// Then:
-	// mass = rho * int(dA)
-	// centroid.x = (1/mass) * rho * int(x * dA)
-	// centroid.y = (1/mass) * rho * int(y * dA)
-	// I = rho * int((x*x + y*y) * dA)
-	//
-	// We can compute these integrals by summing all the integrals
-	// for each triangle of the polygon. To evaluate the integral
-	// for a single triangle, we make a change of variables to
-	// the (u,v) coordinates of the triangle:
-	// x = x0 + e1x * u + e2x * v
-	// y = y0 + e1y * u + e2y * v
-	// where 0 <= u && 0 <= v && u + v <= 1.
-	//
-	// We integrate u from [0,1-v] and then v from [0,1].
-	// We also need to use the Jacobian of the transformation:
-	// D = cross(e1, e2)
-	//
-	// Simplification: triangle centroid = (1/3) * (p1 + p2 + p3)
-	//
-	// The rest of the derivation is handled by computer algebra.
+	// From box2d
 	mass = 0.0f;
 	inertiaTensor = 0.0f;
 
@@ -87,15 +65,6 @@ void SpaceObject::CalculateMass()
 
 		inertiaTensor += (0.25f * k_inv3 * D) * (intx2 + inty2);
 	}
-
-	// Inertia tensor relative to the local origin (point s).
-	
-	//mass = 0;
-	//for (auto& v : vRawVerticies)
-	//{
-	//	mass += v.mag();
-	//}
-	//mass /= vRawVerticies.size();
 }
 
 

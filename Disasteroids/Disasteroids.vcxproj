@@ -73,9 +73,11 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>C:\Users\philip\Desktop\Scripting\C++\Disasteroids\Disasteroids\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>C:\Users\philip\Desktop\Scripting\C++\Disasteroids\Disasteroids\include;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
@@ -94,6 +96,8 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\philip\Desktop\Scripting\C++\Disasteroids\Disasteroids;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>soloud_static.lib;sdl2.lib;sdl2main.lib;sdl2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -111,6 +115,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Users\philip\Desktop\Scripting\C++\Disasteroids\Disasteroids;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>soloud_static.lib;sdl2.lib;sdl2main.lib;sdl2_mixer.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -156,13 +162,72 @@
     <ClInclude Include="BlackHole.h" />
     <ClInclude Include="DelayManager.h" />
     <ClInclude Include="Entity.h" />
+    <ClInclude Include="soloud.h" />
+    <ClInclude Include="soloud_audiosource.h" />
+    <ClInclude Include="soloud_bassboostfilter.h" />
+    <ClInclude Include="soloud_biquadresonantfilter.h" />
+    <ClInclude Include="soloud_bus.h" />
+    <ClInclude Include="soloud_c.h" />
+    <ClInclude Include="soloud_dcremovalfilter.h" />
+    <ClInclude Include="soloud_echofilter.h" />
+    <ClInclude Include="soloud_error.h" />
+    <ClInclude Include="soloud_fader.h" />
+    <ClInclude Include="soloud_fft.h" />
+    <ClInclude Include="soloud_fftfilter.h" />
+    <ClInclude Include="soloud_file.h" />
+    <ClInclude Include="soloud_file_hack_off.h" />
+    <ClInclude Include="soloud_file_hack_on.h" />
+    <ClInclude Include="soloud_filter.h" />
+    <ClInclude Include="soloud_flangerfilter.h" />
+    <ClInclude Include="soloud_freeverbfilter.h" />
+    <ClInclude Include="soloud_internal.h" />
+    <ClInclude Include="soloud_lofifilter.h" />
+    <ClInclude Include="soloud_misc.h" />
+    <ClInclude Include="soloud_monotone.h" />
+    <ClInclude Include="soloud_noise.h" />
+    <ClInclude Include="soloud_openmpt.h" />
+    <ClInclude Include="soloud_queue.h" />
+    <ClInclude Include="soloud_robotizefilter.h" />
+    <ClInclude Include="soloud_sfxr.h" />
+    <ClInclude Include="soloud_speech.h" />
+    <ClInclude Include="soloud_tedsid.h" />
+    <ClInclude Include="soloud_thread.h" />
+    <ClInclude Include="soloud_vic.h" />
+    <ClInclude Include="soloud_vizsn.h" />
+    <ClInclude Include="soloud_wav.h" />
+    <ClInclude Include="soloud_waveshaperfilter.h" />
+    <ClInclude Include="soloud_wavstream.h" />
     <ClInclude Include="KeyCharMap.h" />
     <ClInclude Include="Laser.h" />
-    <ClInclude Include="olcPGEX_Sound.h" />
+    <ClInclude Include="olcPGEX_AudioListener.h" />
+    <ClInclude Include="olcPGEX_AudioSource.h" />
     <ClInclude Include="olcPixelGameEngine.h" />
     <ClInclude Include="Particle.h" />
     <ClInclude Include="ParticleSystem.h" />
     <ClInclude Include="SpaceObject.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="assets\title.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Media Include="assets\audio\asteroidBreak.wav" />
+    <Media Include="assets\audio\asteroidHit.wav" />
+    <Media Include="assets\audio\introExplotion.wav" />
+    <Media Include="assets\audio\laser.wav" />
+    <Media Include="assets\audio\levelComplete.wav" />
+    <Media Include="assets\audio\playerBreak.wav" />
+    <Media Include="assets\audio\playerThrust.wav" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="SDL2.dll" />
+    <None Include="SDL2_mixer.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="SDL2.lib" />
+    <Library Include="SDL2main.lib" />
+    <Library Include="SDL2_mixer.lib" />
+    <Library Include="soloud.lib" />
+    <Library Include="soloud_static.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
