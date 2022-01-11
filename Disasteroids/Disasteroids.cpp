@@ -79,9 +79,6 @@ private:
 	
 	bool bDebugSkipTitleScreen = false;
 
-
-	vector<olc::vf2d> vecModelAsteroid;
-
 	// Implements "wrap around" for various in-game sytems
 	void WrapCoordinates(float ix, float iy, float& ox, float& oy)
 	{
@@ -153,7 +150,7 @@ public:
 		{
 			vecAsteroids.push_back({ {(float)(rand() % ScreenWidth()), (float)(rand() % ScreenHeight())},
 					{(float)rand() / (float)RAND_MAX * 6.0f, (float)rand() / (float)RAND_MAX * 6.0f},
-					(float)rand() / (float)RAND_MAX * 3.14f, (float)rand() / (float)RAND_MAX * 0.5f, vecModelAsteroid,
+					(float)rand() / (float)RAND_MAX * 3.14f, (float)rand() / (float)RAND_MAX * 0.5f, CreateAsteroidModel(),
 					olc::YELLOW });
 		}
 
@@ -187,17 +184,40 @@ public:
 		bGameIsStarting = true;
 	}
 
-	void CreateAsteroidModel() {
-		int verts = 24;
-		for (int i = 0; i < verts; i++)
+	vector<olc::vf2d> CreateAsteroidModel() {
+
+		vector<olc::vf2d> vecModelAsteroid;
+		int vertCount = 24;
+		for (int i = 0; i < vertCount; i++)
 		{
 			// Counter clockwise
-			float noise = (float)rand() / (float)RAND_MAX * 0.6f + 1.6f;
+			float noise = ((float)rand() / (float)RAND_MAX - 0.2) * 1.0f + 1.6f;
 			vecModelAsteroid.push_back({
-				noise * sinf(((float)i / (float)verts) * 6.28318f) * nAsteroidSize,
-				noise * cosf(((float)i / (float)verts) * 6.28318f) * nAsteroidSize
+				noise * sinf(((float)i / (float)vertCount) * 6.28318f) * nAsteroidSize,
+				noise * cosf(((float)i / (float)vertCount) * 6.28318f) * nAsteroidSize
 				});
 		}
+
+		// Convexify : Thanks to Magarev for this solution
+		for (int b = 0; b < vertCount; b++)
+		{
+			int a = (b + vertCount - 1) % vertCount;
+			int c = (b + 1) % vertCount;
+
+			olc::vf2d ba = vecModelAsteroid[a] - vecModelAsteroid[b];
+			olc::vf2d bc = vecModelAsteroid[c] - vecModelAsteroid[b];
+
+			while (ba.cross(bc) < 0.0) {
+				// Concave polygon detected
+				olc::vf2d normal = (ba + bc).norm();
+				vecModelAsteroid[b] += normal;
+
+				ba = vecModelAsteroid[a] - vecModelAsteroid[b];
+				bc = vecModelAsteroid[c] - vecModelAsteroid[b];
+			}
+		}
+
+		return vecModelAsteroid;
 	}
 
 	void ResetGame()
@@ -555,7 +575,7 @@ public:
 			vecAsteroids.push_back({ {xPos,
 					yPos},
 					{8.0f * vyUnit * nLevel, 8.0f * vxUnit * nLevel},
-					0.0f, (float)rand() / (float)RAND_MAX * 0.5f, vecModelAsteroid,
+					0.0f, (float)rand() / (float)RAND_MAX * 0.5f, CreateAsteroidModel(),
 					olc::YELLOW });
 		}
 	}
@@ -897,37 +917,37 @@ public:
 	void DrawWireFrameModel(const vector<olc::vf2d>& vecModelCoordinates, olc::vf2d pos, float r = 0.0f, float s = 1.0f, olc::Pixel p = olc::WHITE)
 	{
 		// Create translated model vector of coordinate pairs
-		int verts = vecModelCoordinates.size();
-		if (verts == 0)
+		int vertCount = vecModelCoordinates.size();
+		if (vertCount == 0)
 			return;
 
 		vector<olc::vf2d> vecTransformedCoordinates;
-		vecTransformedCoordinates.resize(verts);
+		vecTransformedCoordinates.resize(vertCount);
 
 		// Rotate
-		for (int i = 0; i < verts; i++)
+		for (int i = 0; i < vertCount; i++)
 		{
 			vecTransformedCoordinates[i].x = vecModelCoordinates[i].x * cosf(r) - vecModelCoordinates[i].y * sinf(r);
 			vecTransformedCoordinates[i].y = vecModelCoordinates[i].x * sinf(r) + vecModelCoordinates[i].y * cosf(r);
 		}
 
 		// Scale
-		for (int i = 0; i < verts; i++)
+		for (int i = 0; i < vertCount; i++)
 		{
 			vecTransformedCoordinates[i] *= s;
 		}
 
 		// Translate
-		for (int i = 0; i < verts; i++)
+		for (int i = 0; i < vertCount; i++)
 		{
 			vecTransformedCoordinates[i] += pos;
 		}
 
 		// Draw Closed Polygon
-		for (int i = 0; i < verts + 1; i++)
+		for (int i = 0; i < vertCount + 1; i++)
 		{
 			int j = (i + 1);
-			DrawLine(vecTransformedCoordinates[i % verts], vecTransformedCoordinates[j % verts], p);
+			DrawLine(vecTransformedCoordinates[i % vertCount], vecTransformedCoordinates[j % vertCount], p);
 			//olc::Pixel color = olc::CYAN;
 			//if (i % verts == 0)
 			//	color = olc::RED;
