@@ -732,7 +732,7 @@ public:
 			SpaceObject newAsteroid = { averageVertexPosition2, newVelocity2, 0, a.angularVelocity, vVertices2, olc::YELLOW };
 
 			if (newAsteroid.mass <= nAsteroidBreakMass)
-				newAsteroid.color = olc::GREY;
+				newAsteroid.color = olc::DARK_GREY;
 
 			if (newAsteroid.mass <= nAsteroidDisintegrateMass)
 				newAsteroid.Kill();
@@ -749,7 +749,7 @@ public:
 			a.CalculateMass();
 
 			if (a.mass <= nAsteroidBreakMass)
-				a.color = olc::GREY;
+				a.color = olc::DARK_GREY;
 
 			if (a.mass <= nAsteroidDisintegrateMass)
 				a.Kill();
