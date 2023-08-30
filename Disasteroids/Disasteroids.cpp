@@ -79,7 +79,6 @@ private:
 	
 	bool bDebugSkipTitleScreen = false;
 
-	// Implements "wrap around" for various in-game sytems
 	void WrapCoordinates(float ix, float iy, float& ox, float& oy)
 	{
 		ox = ix;
@@ -136,7 +135,6 @@ public:
 		AudioSource.LoadAudioSample(playerBreakSample, "./assets/audio/playerBreak.wav");
 		AudioSource.LoadAudioSample(playerThrustSample, "./assets/audio/playerThrust.wav");
 		AudioSource.LoadAudioSample(levelCompleteSample, "./assets/audio/levelComplete.wav");
-
 		AudioSource.LoadAudioSample(introSample, "./assets/audio/introExplotion.wav");
 		AudioSource.Play();
 	}
@@ -240,7 +238,7 @@ public:
 			{ 2.5f, 2.5f }
 			},
 			olc::WHITE);
-		
+
 		// Level will be incremented and asteroids will be spawned in CheckWinCondition()
 		nLevel = 0;
 		nScore = 0;
@@ -452,7 +450,10 @@ public:
 
 		// Draw asteroids
 		for (auto& a : vecAsteroids)
+		{
 			DrawWireFrameModel(a.vWorldVerticies, olc::vf2d(), 0, 1, a.color);
+			Draw(a.position.x, a.position.y, olc::RED);
+		}
 
 		// Draw lasers
 		for (auto& l : vecLasers)
@@ -469,7 +470,7 @@ public:
 	}
 
 	// Checks if the level is complete
-	// also clears the level if it is complete
+	// Also clears the level if it is complete
 	// Kinda violates the rule of having methods only do one thing
 	void HandleLevelSwitch(float fElapsedTime)
 	{
@@ -948,16 +949,7 @@ public:
 		{
 			int j = (i + 1);
 			DrawLine(vecTransformedCoordinates[i % vertCount], vecTransformedCoordinates[j % vertCount], p);
-			//olc::Pixel color = olc::CYAN;
-			//if (i % verts == 0)
-			//	color = olc::RED;
-			//if (i % verts == 1)
-			//	color = olc::DARK_RED;
-			//if (i == 2)
-			//	color = olc::VERY_DARK_RED;
-			//Draw(vecTransformedCoordinates[i % verts].x, vecTransformedCoordinates[i % verts].y, color);
 		}
-		//Draw(vecTransformedCoordinates[1].x, vecTransformedCoordinates[1].y, olc::RED);
 	}
 
 	void CalculateLineScreenIntersection(float a, olc::vf2d position, olc::vf2d& vEndPos)
@@ -988,8 +980,6 @@ public:
 			// Left side
 			vHorizontalIntersect = olc::vf2d(0, ((position.x) * (-tan(a + 1.57079f))) + position.y);
 		}
-
-
 
 		vEndPos = (position - vHorizontalIntersect).mag2() > (position - vVerticalIntersect).mag2() ? vVerticalIntersect : vHorizontalIntersect;
 	}

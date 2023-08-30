@@ -36,41 +36,44 @@ void SpaceObject::Kill()
 
 void SpaceObject::CalculateMass()
 {
-	// From box2d
 	mass = 0.0f;
 	inertiaTensor = 0.0f;
-
-	// Get a reference point for forming triangles.
-	// Use the first vertex to reduce round-off errors.
-	olc::vf2d s = vRawVerticies[0];
+	olc::vf2d centroid = olc::vf2d();
 
 	const float k_inv3 = 1.0f / 3.0f;
 
+	olc::vf2d edge1 = vRawVerticies[vRawVerticies.size() - 1];
 	for (int i = 0; i < vRawVerticies.size(); ++i)
 	{
-		// Triangle vertices.
-		olc::vf2d e1 = vRawVerticies[i] - s;
-		olc::vf2d e2 = i + 1 < vRawVerticies.size() ? vRawVerticies[i + 1] - s : vRawVerticies[0] - s;
+		olc::vf2d edge2 = vRawVerticies[i];
 
-		float D = abs(e1.cross(e2));
+		float D = abs(edge1.cross(edge2));
 
 		float triangleArea = 0.5f * D;
 		mass += triangleArea;
 
-		float ex1 = e1.x, ey1 = e1.y;
-		float ex2 = e2.x, ey2 = e2.y;
+		centroid += triangleArea * k_inv3 * (edge1 + edge2);
 
-		float intx2 = ex1 * ex1 + ex2 * ex1 + ex2 * ex2;
-		float inty2 = ey1 * ey1 + ey2 * ey1 + ey2 * ey2;
+		float intx2 = edge1.x * edge1.x + edge2.x * edge1.x + edge2.x * edge2.x;
+		float inty2 = edge1.y * edge1.y + edge2.y * edge1.y + edge2.y * edge2.y;
 
 		inertiaTensor += (0.25f * k_inv3 * D) * (intx2 + inty2);
+
+		edge1 = edge2;
+	}
+
+	centroid *= 1.0f / mass;
+	position += centroid;
+
+	for (int i = 0; i < vRawVerticies.size(); ++i)
+	{
+		vRawVerticies[i] -= centroid;
 	}
 }
 
 
 void SpaceObject::CalculateVerticiesWorldSpace()
 {
-
 	float cosAng = cosf(angle);
 	float sinAng = sinf(angle);
 
